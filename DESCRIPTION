@@ -1,0 +1,24 @@
+Package: familyenrollment
+Title: Estimation Procedure for Household Bundling in Health Insurance
+Version: 2024.02.15
+Authors@R: 
+    person("Anh", "Nguyen", , "anhnguyen@cmu.edu", role = c("aut", "cre"),
+           comment = c(ORCID = "YOUR-ORCID-ID"))
+Description: This package documents all data processing functions and the estimation functions used in "Household Bundling in Health Insurance".
+License: use_mit_license()
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.1
+Imports:
+    dplyr,
+    tidyr,
+    pracma,
+    randtoolbox,
+    mvtnorm,
+    stats,
+    ggplot2,
+    tidyverse,
+    magrittr
+Depends: 
+    R (>= 2.10)
+LazyData: true

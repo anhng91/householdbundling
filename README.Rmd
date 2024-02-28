@@ -1,0 +1,75 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# familyenrollment
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+This package includes all functions used in data cleaning and estimation of "Household Bundling in Health Insurance". The latest version of the paper can be found here <https://www.andrew.cmu.edu/user/anhnguye/Household-Bundling.pdf>
+
+## Installation
+This package is not available on CRAN. To install this package, first navigate the directory to `familyenrollment`, then run `devtools::install()`. You will also need to load `library(tidyverse)` to use the pipe operator `%>%`.
+
+## List of functions 
+
+### CARA\_fun\_Gauss  
+This function computes the following integral using Gauss-Laguerre approximation: 
+    \[
+      \mathbb{E}\left[\frac{R^{1 - \omega} - 1}{1 - \omega}\right]
+    \]
+when $\omega \sim \mathcal{N}(\mu, \sigma^2)$ truncated at 0. 
+
+
+### second_taylor_CARA
+This function computes the following expectation w.r.t $U$ and $r$, where $r$ is a truncated normal distribution with mean $mu$ and standard deviation $\sigma$, and $U$ is uncorrelated with $r$. Let $\phi$ denote the standard normal distribution's pdf and $\Phi$ denote its CDF. 
+\[
+  \begin{align*}
+    \mathbb{E}\left[ - \exp(-r U) \right] & \approx  \mathbb{E}\left[ - \exp(-r \mathbb{E}\left[U\right]) \right] +  \mathbb{E}\left[ - \frac{r^2}{2} \exp(-r \mathbb{E}\left[U\right]) \left(U - \mathbb{E}\left[U\right] \right)^2  \right] \\
+    & = \left[ - \mathbb{E}\exp(-r \mathbb{E}\left[U\right]) \left(1 + \frac{r^2}{2} Var(U) \right) \right] \\
+    & \propto - \int_0^{\infty} \exp(-r \mathbb{E}\left[U\right]) \left(1 + \frac{r^2}{2} Var(U) \right) \exp\left[-0.5 \frac{(r - \mu)^2}{\sigma^2} \right] \\
+    & = -\exp \left(\frac{\sigma^2 (\mathbb{E} U)^2}{2} - \mu \mathbb{E} U  \right) \frac{1 - \Phi\left( -(\mu - a \sigma^2)/\sigma \right)}{1 - \Phi(-\mu/\sigma)} \\ 
+    & \left[ 1 + \frac{Var(U)}{2} \left( \sigma^2  \left[1 - \frac{-\mu/\sigma \phi(-\mu/\sigma)}{1 - \Phi(-\mu/\sigma)} - \left(\phi(-\mu/\sigma)/(1 - \Phi(-\mu/\sigma))\right)^2 \right] + \left(\mu + \phi(-\mu/\sigma)/(1 - \Phi(-\mu/\sigma))\sigma \right)^2 \right) \right]
+  \end{align*} 
+\]
+The arguments of `second_taylor_CARA` is `a`, which is $\mathbb{E}(U)$, `b`, which is $Var(U)$, and `mu` and `sigma`. 
+
+### second_taylor_CARA_test
+This function computes the numerical expectation of the function in `second_taylor_CARA`. 
+
+
+### household_draw_theta_kappa_Rdraw
+Note: in this function, I use Gauss Hermite to approximate the expectation w.r.t $\bar{\theta}$. Note that Gauss Hermite is very accurate when the integral is over $X$, which is normally distributed with an unknown $\sigma$. However, the Hermite draws need to be normalized to center around the mean of the distribution of $X$. In addition, the Hermite draws are also scaled to have variance equal to the unconditional variance of each member's health shocks. 
+
+First, draw (conditional) $\theta$ based on the unconditional distribution of $\theta$. Then, approximate the following integral, which is the expected utility conditional on health status $\bar{\theta}$, as 
+\[
+  \begin{align*}
+    \int U(\pmb{\theta}, Y, \pmb{\kappa}) \exp(-1/2 (\log (\pmb{\theta} - \pmb{\bar{\theta}}) \sigma_{\pmb{\theta}}^{-2} \log (\pmb{\theta} - \pmb{\bar{\theta}})')) d\pmb{\theta}  \\
+    \approx \mathbb{E}\left[ U(\pmb{\theta}, Y, \pmb{\kappa}) \exp(-1/2 (\log (\pmb{\theta} - \pmb{\bar{\theta}}) \sigma_{\theta|\pmb{\theta}}^{-2} \log (\pmb{\theta} - \pmb{\bar{\theta}})') + 1/2 \log(\pmb{\theta}) \sigma_{\theta}^{-2} \log(\pmb{\theta})')\right]
+  \end{align*}
+\]
+where the expectation is taken over draws of $\theta$, drawn from the unconditional distribution. Note that this approximation works well when $\bar{\theta}$ is not too far from the unconditional mean because the variance of the <i>conditional</i> distribution is smaller than that of the unconditional distribution. 
+
+
+The draws of $\bar{\theta}$ and their weights are stored in `Hermite_draw_mat` of the evaluated output. The draws of $\theta$  and coinsurance rates are stored in `theta_draw` and `kappa_draw`.
+
+The computation of $\exp(-1/2 (\log (\pmb{\theta} - \pmb{\bar{\theta}}) \sigma_{\theta|\pmb{\bar{\theta}}}^{-2} \log (\pmb{\theta} - \pmb{\bar{\theta}})')$ requires knowing $\sigma_{\theta}$. So instead of computing this function directly, I use a second-order Taylor approximation around $-1/2 (\log (\pmb{\theta} - \pmb{\bar{\theta}}) \sigma_{\theta}^{-2} \log (\pmb{\theta} - \pmb{\bar{\theta}})'$
+\[
+    \exp(-1/2(x-\mu)^2/\sigma^2) =  \sum_{j = 0} \exp(-1/2(x-\mu)^2/\sigma_0^2) \frac{(-1/2(x-\mu)^2)^j}{j!}(\sigma^{-2} - \sigma_0^{-2})^j 
+\] 
+
+
+
+
