@@ -7,7 +7,7 @@
 #' @importFrom magrittr "%>%" 
 #' @importFrom tidyr replace_na
 #' @importFrom utils combn
-#' @importFrom dplyr select mutate slice
+#' @importFrom dplyr select mutate slice pull filter
 #' @importFrom ggplot2 ggplot
 #' @importFrom mvtnorm dmvnorm
 #' @importFrom randtoolbox halton

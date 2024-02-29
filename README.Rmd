@@ -25,6 +25,8 @@ This package is not available on CRAN. To install this package, first navigate t
 
 ## List of functions 
 
+The functions used for estimation is stored in `R/base_functions.R`. Some of these functions are self explanatory, and hence their descriptions are skipped. 
+
 ### CARA\_fun\_Gauss  
 This function computes the following integral using Gauss-Laguerre approximation: 
     \[
@@ -69,6 +71,8 @@ The computation of $\exp(-1/2 (\log (\pmb{\theta} - \pmb{\bar{\theta}}) \sigma_{
 \[
     \exp(-1/2(x-\mu)^2/\sigma^2) =  \sum_{j = 0} \exp(-1/2(x-\mu)^2/\sigma_0^2) \frac{(-1/2(x-\mu)^2)^j}{j!}(\sigma^{-2} - \sigma_0^{-2})^j 
 \] 
+
+## Data objects 
 
 
 

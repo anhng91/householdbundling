@@ -238,19 +238,21 @@ second_taylor_CARA_test = function(a, b, mu, sigma) {
 #' @param deriv_tol Default set to 1e-3. The tolerance level for the numerical computation of derivative. 
 #' @param default_sigma Is a number between 0 and 1 to use in the Taylor approximation
 #' @param taylor_order is the order of Taylor approximation 
+#' @param xi_parameters estimated parameters for coverage
+#' @param sick_parameters estimated parameters for probability of being sick 
 #'
 #' @return a list. The first element is expected value of oop conditional on the observed insurance status being optimal, the second element is the expected value of oop squared conditional on the observed insurance status being optimal, the third element is the probability of observed insurance being optimal. The next 3 elements are the derivative w.r.t the coefficients being optimized of the first 3 elements. 
 #' 
 #' @export
 #'
 #' @examples
-#' mini_data = household_draw_theta_kappa_Rdraw(1, sample_data_and_parameter$param, 1000, 10);
+#' mini_data = household_draw_theta_kappa_Rdraw(1, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample);
 #' mini_data = compute_expected_U_m(mini_data, sample_data_and_parameter$param, 
 #' n_draw, default_sigma = 0.5, taylor_order=4)
 #' moment_eligible_hh(mini_data, sample_data_and_parameter$param, deriv_tol=1e-3, default_sigma = 0.5, taylor_order=4)
 #' 
 
-moment_eligible_hh = function(data_set, param, deriv_tol = 1e-3, default_sigma, taylor_order=3) {
+moment_eligible_hh = function(data_set, param, deriv_tol = 1e-3, default_sigma, taylor_order=3,  sick_parameters, xi_parameters) {
 	if (!('expected_U' %in% names(data_set))) {
 		stop('data_set must be an object produced by compute_expected_U_m');
 	}
@@ -320,7 +322,7 @@ moment_eligible_hh = function(data_set, param, deriv_tol = 1e-3, default_sigma, 
 #' @export
 #'
 #' @examples
-#' mini_data = household_draw_theta_kappa_Rdraw(3, sample_data_and_parameter$param, 1000, 10);
+#' mini_data = household_draw_theta_kappa_Rdraw(3, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample);
 #' moment_ineligible_hh(mini_data, sample_data_and_parameter$param)
 #' 
 #' 
@@ -478,7 +480,7 @@ all_combn = function(vec_, n = 1) {
 #' @export
 #'
 #' @examples
-#' mini_data = household_draw_theta_kappa_Rdraw(1, sample_data_and_parameter$param, 1000, 10);
+#' mini_data = household_draw_theta_kappa_Rdraw(1, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample);
 #' compute_expected_U_m(mini_data, sample_data_and_parameter$param, n_draw, default_sigma = 0.5, taylor_order=2)
 
 
@@ -592,16 +594,16 @@ compute_expected_U_m = function(data_set, param, n_draw, default_sigma = 0.5, ta
 #' @export
 #'
 #' @examples
-#' household_draw_theta_kappa_Rdraw(1, sample_data_and_parameter$param, 1000, 10)
+#' household_draw_theta_kappa_Rdraw(1, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample)
 #' 
-household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 1000, n_draw_gauss = 10) {
+household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 1000, n_draw_gauss = 10, sick_parameters, xi_parameters) {
 	set.seed(1);
 	data_hh_i = data_hh_list[[hh_index]]; 
 	HHsize = nrow(data_hh_i);
 	X_ind = var_ind(data_hh_i)
 	X_hh = var_hh(data_hh_i)
-	draw_p_xi_0 = var_ind(data_hh_i) %*% xi_parameters$par[1:ncol_data_ind_xi]
-	draw_p_xi_1 = var_ind(data_hh_i) %*% xi_parameters$par[(ncol_data_ind_xi + 1):(2*ncol_data_ind_xi)]
+	draw_p_xi_0 = X_ind %*% xi_parameters$par[1:ncol(X_ind)]
+	draw_p_xi_1 = X_ind %*% xi_parameters$par[(ncol(X_ind) + 1):(2*ncol(X_ind))]
 	p_0 = exp(draw_p_xi_0)/(1 + exp(draw_p_xi_0) + exp(draw_p_xi_1))
 	p_1 = exp(draw_p_xi_1)/(1 + exp(draw_p_xi_1) + exp(draw_p_xi_0))
 	sick_p = c(1/(1 + exp(X_ind %*% sick_parameters$par)))
@@ -658,7 +660,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 	# normalize Hermite draws to take into account the conditional distribution of theta
 
 	Hermite_draw_mat = list()
-	Hermite_draw_mat$x = do.call('cbind', lapply(1:HHsize, function(member_index) Hermite_draw$x[combn_index[,member_index]] * (exp(param$sigma_thetabar) + (X_ind[i,] %*% param$beta_theta_ind)^2) + t(c(X_ind[member_index,], data_hh_i$Year[member_index] == 2004, data_hh_i$Year[member_index] == 2006 , data_hh_i$Year[member_index] == 2010, data_hh_i$Year[member_index] == 2012)) %*% param$beta_theta))
+	Hermite_draw_mat$x = do.call('cbind', lapply(1:HHsize, function(member_index) Hermite_draw$x[combn_index[,member_index]] * (exp(param$sigma_thetabar) + (X_ind[member_index,] %*% param$beta_theta_ind)^2) + t(c(X_ind[member_index,], data_hh_i$Year[member_index] == 2004, data_hh_i$Year[member_index] == 2006 , data_hh_i$Year[member_index] == 2010, data_hh_i$Year[member_index] == 2012)) %*% param$beta_theta))
 	Hermite_draw_mat$w = apply(do.call('cbind', lapply(1:HHsize, function(member_index) Hermite_draw$w[combn_index[,member_index]])), 1, prod)
 
 	for (i in 1:HHsize) {
@@ -730,5 +732,126 @@ var_hh = function(data_mini) {
 	return(cbind(1,as.matrix(output)))
 }
 
+
+
+#' Compute the LLH of a household member getting sick.
+#'
+#' @param data A dataframe of a household or multiple households
+#' @param beta A vector of length var_ind(data)
+#'
+#' @return a numerical value for LLH.
+#' 
+#' @export
+#'
+#' @examples
+#' llh_sick(runif(ncol(var_ind(sample_data_and_parameter[[2]]$data))),sample_data_and_parameter[[2]]$data)
+#'
+llh_sick = function(beta, data) {
+	sick_dummy = data %>% pull(sick_dummy);
+	part1 = exp(var_ind(data) %*% beta)
+	p0 = 1/(1 + part1); 
+	p1 = part1/(1 + part1); 
+	llh = -sum((sick_dummy == 0)*log(p0)) - sum((sick_dummy == 1)*log(p1));
+	return(llh)
+}
+
+
+#' Compute the gradient of LLH of a household member getting sick.
+#'
+#' @param data A dataframe of a household or multiple households
+#' @param beta A vector of length var_ind(data)
+#'
+#' @return a vector, each is a partial derivative w.r.t beta.
+#' 
+#' @export
+#'
+#' @examples
+#' grad_llh_sick(runif(ncol(var_ind(sample_data_and_parameter[[2]]$data))),sample_data_and_parameter[[2]]$data)
+#'
+#' 
+grad_llh_sick = function(beta, data) {
+	sick_dummy = data %>% pull(sick_dummy);
+	var_ind_data = var_ind(data)
+	part1 = exp(var_ind_data %*% beta)
+	p0 = 1/(1 + part1); 
+	p1 = part1/(1 + part1); 
+	grad_part1 = apply(var_ind_data, 2, function(x) x * part1)
+	grad_p0 = - apply(grad_part1, 2, function(x) x/(1 + part1)^2)
+	grad_p1 = -grad_p0
+	
+	grad_llh = - (colSums(apply(grad_p0, 2, function(x) (sick_dummy == 0)*x/p0)) + 
+								colSums(apply(grad_p1, 2, function(x) (sick_dummy == 1)*x/p1)));
+	return(grad_llh)
+}
+
+
+#' Compute the LLH of a household member getting coverage
+#'
+#' @param data A dataframe of a household or multiple households
+#' @param beta A vector of length var_ind(data)
+#'
+#' @return a numerical value for LLH.
+#' 
+#' @export
+#'
+#' @examples
+#' llh_xi(runif(2 * ncol(var_ind(data_hh_list[[34592]]))),data_hh_list[[34592]])
+#'
+llh_xi = function(beta, data) {
+	var_ind_data = var_ind(data)
+	beta_x0 = beta[1:ncol(var_ind_data)]; 
+	beta_x1 = beta[(ncol(var_ind_data) + 1):length(beta)]; 
+	X_mat = var_ind_data
+	
+	zeta_observed = data %>% filter(Year == 2008) %>% pull(zeta_observed);
+	
+	part0 = exp(X_mat  %*% beta_x0) 
+	part1 = exp(X_mat %*% beta_x1)
+	p0 = part0/(1 + part0 + part1); 
+	p1 = part1/(1 + part0 + part1); 
+	p_mid = 1/(1 + part0 + part1); 
+	llh = -sum((zeta_observed == 0)*log(p0)) - sum((zeta_observed == 1)*log(p1)) - 
+		sum((zeta_observed < 1 & zeta_observed > 0)*log(p_mid));
+	# message(paste0('value = ', llh))
+	return(llh)
+}
+
+
+#' Compute the gradient of LLH of a household member getting coverage.
+#'
+#' @param data A dataframe of a household or multiple households
+#' @param beta A vector of length var_ind(data)
+#'
+#' @return a vector, each is a partial derivative w.r.t beta.
+#' 
+#' @export
+#'
+#' @examples
+#' grad_llh_xi(runif(2 * ncol(var_ind(data_hh_list[[34592]]))),data_hh_list[[34592]])
+#'
+#' 
+grad_llh_xi = function(beta, data) {
+	var_ind_data = var_ind(data)
+	beta_x0 = beta[1:ncol(var_ind_data)]; 
+	beta_x1 = beta[(ncol(var_ind_data) + 1):length(beta)]; 
+	X_mat = var_ind_data
+	
+	zeta_observed = data %>% filter(Year == 2008) %>% pull(zeta_observed);
+	part0 = exp(X_mat %*% beta_x0) 
+	part1 = exp(X_mat %*% beta_x1)
+	p0 = part0/(1 + part0 + part1); 
+	p1 = part1/(1 + part0 + part1); 
+	p_mid = 1/(1 + part0 + part1); 
+	mat_0 = matrix(0, nrow=nrow(data),ncol=ncol(X_mat))
+	grad_part0 = cbind(apply(X_mat, 2, function(x) x * part0), mat_0)
+	grad_part1 = cbind(mat_0, apply(X_mat, 2, function(x) x * part1))
+	grad_p0 = matrix(apply(grad_part0, 2, function(x) x * (1 + part0 + part1)/(1 + part0 + part1)^2), ncol=ncol(X_mat) * 2) - matrix(apply(grad_part0 + grad_part1, 2, function(x) x * part0/(1 + part0 + part1)^2), ncol=ncol(X_mat) * 2)
+	grad_p1 =  matrix(apply(grad_part1, 2, function(x) x * (1 + part0 + part1)/(1 + part0 + part1)^2), ncol=ncol(X_mat) * 2) - matrix(apply(grad_part0 + grad_part1, 2, function(x) x * part1/(1 + part0 + part1)^2), ncol=ncol(X_mat) * 2)
+	grad_p_mid = -apply(grad_part0 + grad_part1,2,function(x) x /(1 + part0 + part1)^2)
+	grad_llh = - (colSums(matrix(apply(grad_p0, 2, function(x) (zeta_observed == 0)*x/p0), ncol=ncol(X_mat) * 2)) + 
+								colSums(matrix(apply(grad_p1, 2, function(x) (zeta_observed == 1)*x/p1), ncol=ncol(X_mat) * 2)) + 
+								colSums(matrix(apply(grad_p_mid, 2, function(x) (zeta_observed < 1 & zeta_observed > 0)*x/p_mid), ncol=ncol(X_mat) * 2)));
+	return(grad_llh)
+}
 
 

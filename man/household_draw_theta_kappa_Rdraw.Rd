@@ -8,7 +8,9 @@ household_draw_theta_kappa_Rdraw(
   hh_index,
   param,
   n_draw_halton = 1000,
-  n_draw_gauss = 10
+  n_draw_gauss = 10,
+  sick_parameters,
+  xi_parameters
 )
 }
 \arguments{
@@ -27,6 +29,6 @@ a list that includes the draws of household-related objects,taking into account 
 Compute the draws (preference parameters independent).
 }
 \examples{
-household_draw_theta_kappa_Rdraw(1, sample_data_and_parameter$param, 1000, 10)
+household_draw_theta_kappa_Rdraw(1, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample)
 
 }

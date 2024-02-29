@@ -30,6 +30,6 @@ a list that includes the draws of U, U squared, and m. These draws are list with
 Compute the expected utility, expected squared utility, and expected medical spending with respect to the preference parameters.
 }
 \examples{
-mini_data = household_draw_theta_kappa_Rdraw(1, sample_data_and_parameter$param, 1000, 10);
+mini_data = household_draw_theta_kappa_Rdraw(1, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample);
 compute_expected_U_m(mini_data, sample_data_and_parameter$param, n_draw, default_sigma = 0.5, taylor_order=2)
 }

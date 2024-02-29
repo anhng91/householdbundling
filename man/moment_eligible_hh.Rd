@@ -9,7 +9,9 @@ moment_eligible_hh(
   param,
   deriv_tol = 0.001,
   default_sigma,
-  taylor_order = 3
+  taylor_order = 3,
+  sick_parameters,
+  xi_parameters
 )
 }
 \arguments{
@@ -22,6 +24,10 @@ moment_eligible_hh(
 \item{default_sigma}{Is a number between 0 and 1 to use in the Taylor approximation}
 
 \item{taylor_order}{is the order of Taylor approximation}
+
+\item{sick_parameters}{estimated parameters for probability of being sick}
+
+\item{xi_parameters}{estimated parameters for coverage}
 }
 \value{
 a list. The first element is expected value of oop conditional on the observed insurance status being optimal, the second element is the expected value of oop squared conditional on the observed insurance status being optimal, the third element is the probability of observed insurance being optimal. The next 3 elements are the derivative w.r.t the coefficients being optimized of the first 3 elements.
@@ -30,7 +36,7 @@ a list. The first element is expected value of oop conditional on the observed i
 Compute the moments of eligible households
 }
 \examples{
-mini_data = household_draw_theta_kappa_Rdraw(1, sample_data_and_parameter$param, 1000, 10);
+mini_data = household_draw_theta_kappa_Rdraw(1, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample);
 mini_data = compute_expected_U_m(mini_data, sample_data_and_parameter$param, 
 n_draw, default_sigma = 0.5, taylor_order=4)
 moment_eligible_hh(mini_data, sample_data_and_parameter$param, deriv_tol=1e-3, default_sigma = 0.5, taylor_order=4)
