@@ -8,7 +8,7 @@ library(parallel)
 library(randomForest)
 library(randtoolbox)
 
-setwd('./familyenrollment')
+# setwd('./familyenrollment')
 devtools::install(upgrade='never')
 library(familyenrollment)
 
@@ -95,6 +95,14 @@ for (index in 1:length(sample_identify_theta)) {
 
 message('Estimating theta')
 
+if (Sys.info()[['sysname']] == 'Windows') {
+  numcores = 10; 
+  cl = makeCluster(numcores);
+  clusterEvalQ(cl, library('tidyverse'))
+  clusterEvalQ(cl, library('familyenrollment'))
+  clusterExport(cl, c('active_index', 'param_trial', 'data_hh_list_theta'))
+}
+
 estimate_theta_parameter = splitfngr::optim_share(rep(0, length(active_index)), function(x) {
       x_new = param_trial; 
       x_new[active_index] = x; 
@@ -165,6 +173,10 @@ transform_param_trial = transform_param(param_trial, return_index=TRUE)
 param_trial[tail(transform_param_trial[[2]][['beta_theta']], n=4)] = 0; 
 
 
+if (Sys.info()[['sysname']] == 'Windows') {
+  clusterExport(cl, c('active_index', 'param_trial', 'transform_param_trial', 'sample_identify_pref'))
+}
+
 large_estimate_pref_parameter = optim(rep(0, 4), function(y) {
   message('Preparing data for estimation of preference')
   data_hh_list_pref = list()
@@ -191,6 +203,11 @@ large_estimate_pref_parameter = optim(rep(0, 4), function(y) {
   active_index = unlist(transform_param_trial[[2]][var_list])
 
   message('Estimating preferences')
+
+  if (Sys.info()[['sysname']] == 'Windows') {
+    clusterExport(cl, c('param_trial'))
+  }
+
   estimate_pref_parameter = splitfngr::optim_share(param_trial[active_index], function(x) {
       # optim_rf_trial = optim(trial_param[-zero_index], function(x) {
         x_new = param_trial; 
