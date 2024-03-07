@@ -474,6 +474,7 @@ all_combn = function(vec_, n = 1) {
 #' @param n_draw this is number of Gauss Laguerre points.
 #' @param default_sigma is between 0 and 1. Default to 0.5. represents the value of sigma_theta that is used for Taylor second-order approximation. sigma_theta is computed as default_sigma * exp(param$sigma_thetabar)
 #' @param taylor_order an integer, equal to the order of Taylor approximation used to approximate exp(-x^2/sigma^2) around (sigma^2 = sigma_0^2).
+#' @param u_lowerbar value of utility when the residual income is nonpositive. Default value is -10
 #'
 #' @return a list that includes the draws of U, U squared, and m. These draws are list with length equal to the order of the Taylor approximation. Each component of U and U2 is a matrix of dimension the number of bundles x length of thetabar. Each component of m is a matrix with dimension equal to length of thetabar x hhsize.
 #' 
@@ -485,7 +486,7 @@ all_combn = function(vec_, n = 1) {
 
 
 
-compute_expected_U_m = function(data_set, param, n_draw, default_sigma = 0.5, taylor_order) {
+compute_expected_U_m = function(data_set, param, n_draw, default_sigma = 0.5, taylor_order, u_lowerbar = -10) {
 	stopifnot(default_sigma <= 1 & default_sigma >= 0)
 	data_hh_i = data_set$data;
 	policy_mat_hh_index = data_set$policy_mat;
@@ -553,6 +554,11 @@ compute_expected_U_m = function(data_set, param, n_draw, default_sigma = 0.5, ta
 			U2[[insurance_bundle]] = U2[[insurance_bundle]] - 2 * unlist(lapply(kappa_draw[[insurance_bundle]][,mem_index],function(x)  CRRA_fun_Gauss(log(1 + x), mu = mean_beta_gamma[mem_index], sigma = exp(param$sigma_gamma), n_draw = n_draw))) * (R_draw[[insurance_bundle]] > 0) * theta_draw[,mem_index] * truncated_normal_mean(mu = mean_beta_delta[mem_index], sigma = exp(param$sigma_delta)) * (lapply(R_draw[[insurance_bundle]], function(x) ifelse(x > 0, CRRA_fun_Gauss(log(x), mu = mean_beta_omega, sigma = exp(param$sigma_omega), n_draw = n_draw), 0)) %>% unlist())
 
 		}
+	}
+
+	for (insurance_bundle in 1:length(R_draw)) {
+		U[[insurance_bundle]] = U[[insurance_bundle]] * (R_draw[[insurance_bundle]] > 0) + u_lowerbar * (R_draw[[insurance_bundle]] <= 0)
+		U2[[insurance_bundle]] = U2[[insurance_bundle]] * (R_draw[[insurance_bundle]] > 0) + u_lowerbar^2 * (R_draw[[insurance_bundle]] <= 0)
 	}
 
 	U = do.call('cbind', U); 
@@ -655,14 +661,16 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 
 	Hermite_draw = pracma::gaussHermite(n_draw_gauss)
 
-	combn_index = all_combn(1:n_draw_gauss, HHsize);
-
 	# normalize Hermite draws to take into account the conditional distribution of theta
 
 	Hermite_draw_mat = list()
-	Hermite_draw_mat$x = do.call('cbind', lapply(1:HHsize, function(member_index) Hermite_draw$x[combn_index[,member_index]] * (exp(param$sigma_thetabar) + (X_ind[member_index,] %*% param$beta_theta_ind)^2) + t(c(X_ind[member_index,], data_hh_i$Year[member_index] == 2004, data_hh_i$Year[member_index] == 2006 , data_hh_i$Year[member_index] == 2010, data_hh_i$Year[member_index] == 2012)) %*% param$beta_theta))
-	Hermite_draw_mat$w = apply(do.call('cbind', lapply(1:HHsize, function(member_index) Hermite_draw$w[combn_index[,member_index]])), 1, prod)
 
+	if (data_hh_i$HHsize_s[1] != 0) {
+		combn_index = all_combn(1:n_draw_gauss, HHsize);
+		Hermite_draw_mat$x = do.call('cbind', lapply(1:HHsize, function(member_index) Hermite_draw$x[combn_index[,member_index]] * (exp(param$sigma_thetabar) + (X_ind[member_index,] %*% param$beta_theta_ind)^2) + t(c(X_ind[member_index,], data_hh_i$Year[member_index] == 2004, data_hh_i$Year[member_index] == 2006 , data_hh_i$Year[member_index] == 2010, data_hh_i$Year[member_index] == 2012)) %*% param$beta_theta))
+		Hermite_draw_mat$w = apply(do.call('cbind', lapply(1:HHsize, function(member_index) Hermite_draw$w[combn_index[,member_index]])), 1, prod)
+	}
+	
 	for (i in 1:HHsize) {
 		common_household_factor[,i] = household_random_factor * (X_ind[i,] %*% param$beta_theta_ind) + t(c(X_ind[i,], 0, 0 , 0, 0)) %*% param$beta_theta
 		individual_factor[,i] = qnorm(halton_mat[,i]);
@@ -798,13 +806,14 @@ grad_llh_sick = function(beta, data) {
 #' llh_xi(runif(2 * ncol(var_ind(data_hh_list[[34592]]))),data_hh_list[[34592]])
 #'
 llh_xi = function(beta, data) {
-	var_ind_data = var_ind(data)
+	zeta_observed = data %>% filter(Year == 2008) %>% pull(zeta_observed);
+
+	var_ind_data = var_ind(data %>% filter(Year == 2008))
 	beta_x0 = beta[1:ncol(var_ind_data)]; 
 	beta_x1 = beta[(ncol(var_ind_data) + 1):length(beta)]; 
 	X_mat = var_ind_data
 	
-	zeta_observed = data %>% filter(Year == 2008) %>% pull(zeta_observed);
-	
+
 	part0 = exp(X_mat  %*% beta_x0) 
 	part1 = exp(X_mat %*% beta_x1)
 	p0 = part0/(1 + part0 + part1); 
@@ -831,18 +840,19 @@ llh_xi = function(beta, data) {
 #'
 #' 
 grad_llh_xi = function(beta, data) {
-	var_ind_data = var_ind(data)
+	zeta_observed = data %>% filter(Year == 2008) %>% pull(zeta_observed);
+
+	var_ind_data = var_ind(data %>% filter(Year == 2008))
 	beta_x0 = beta[1:ncol(var_ind_data)]; 
 	beta_x1 = beta[(ncol(var_ind_data) + 1):length(beta)]; 
 	X_mat = var_ind_data
-	
-	zeta_observed = data %>% filter(Year == 2008) %>% pull(zeta_observed);
+
 	part0 = exp(X_mat %*% beta_x0) 
 	part1 = exp(X_mat %*% beta_x1)
 	p0 = part0/(1 + part0 + part1); 
 	p1 = part1/(1 + part0 + part1); 
 	p_mid = 1/(1 + part0 + part1); 
-	mat_0 = matrix(0, nrow=nrow(data),ncol=ncol(X_mat))
+	mat_0 = matrix(0, nrow=nrow(X_mat),ncol=ncol(X_mat))
 	grad_part0 = cbind(apply(X_mat, 2, function(x) x * part0), mat_0)
 	grad_part1 = cbind(mat_0, apply(X_mat, 2, function(x) x * part1))
 	grad_p0 = matrix(apply(grad_part0, 2, function(x) x * (1 + part0 + part1)/(1 + part0 + part1)^2), ncol=ncol(X_mat) * 2) - matrix(apply(grad_part0 + grad_part1, 2, function(x) x * part0/(1 + part0 + part1)^2), ncol=ncol(X_mat) * 2)
@@ -852,6 +862,170 @@ grad_llh_xi = function(beta, data) {
 								colSums(matrix(apply(grad_p1, 2, function(x) (zeta_observed == 1)*x/p1), ncol=ncol(X_mat) * 2)) + 
 								colSums(matrix(apply(grad_p_mid, 2, function(x) (zeta_observed < 1 & zeta_observed > 0)*x/p_mid), ncol=ncol(X_mat) * 2)));
 	return(grad_llh)
+}
+
+#' Compute the LLH of medical expenditure.
+#'
+#' @param data_set A list produced by household_draw_theta_kappa_Rdraw
+#' @param param This is a list, each element is a coefficient (i.e., a vector) of a preference parameter (beta_gamma, beta_omega, beta_delta, beta_theta, beta_theta_ind) and the standard deviations of the unobserved heterogeneity (sigma_gamma, sigma_omega, sigma_delta, sigma_theta, sigma_thetabar)
+#'
+#' @return a list. The first element is the LLH, the second element is the derivative with respect to beta_theta, beta_theta_ind, and sigma_thetabar
+#' 
+#' @export
+#'
+#' @examples
+#' identify_theta(sample_data_and_parameter[[2]], sample_data_and_parameter[[1]])
+#'
+#' 
+identify_theta = function(data_set, param) {
+	tol = 1e-3;
+	oop_0_const = 1e-20;
+
+	data_hh_i = data_set$data;
+	policy_mat_hh_index = data_set$policy_mat;
+	hh_index = data_set$index; 
+	income_vec = data_set$income;
+	X_ind = data_set$X_ind; 
+	X_hh = data_set$X_hh;
+	sick_p = data_set$sick_p;
+
+	HHsize = data_hh_i$HHsize[1]
+	mean_beta_theta = c(cbind(X_ind, data_hh_i$Year == 2006, data_hh_i$Year == 2008, data_hh_i$Year == 2010, data_hh_i$Year == 2012) %*% param$beta_theta);
+	mean_beta_theta_ind = c(X_ind %*% param$beta_theta_ind);
+
+	mean_beta_omega = X_hh %*% param$beta_omega; 
+	mean_beta_delta = X_ind %*% param$beta_delta;
+	mean_beta_gamma = X_ind %*% param$beta_gamma; 
+	mean_beta_r = X_hh %*% param$beta_r;
+
+	input_vec = c(param$sigma_thetabar, mean_beta_theta, mean_beta_theta_ind); 
+
+	names_input_vec = c('sigma_thetabar','mean_beta_theta', 'mean_beta_theta_ind')
+	size_input_vec = c(1, HHsize, HHsize)
+
+	transform_size_input_vec = function(input_vec) {
+		cumsum_size_input_vec = cumsum(size_input_vec)
+		input_vec_list = list()
+		for (i in 1:length(size_input_vec)){
+			if (i == 1) {
+				input_vec_list[[names_input_vec[i]]] = input_vec[1:(cumsum_size_input_vec[i])]
+			} else {
+				input_vec_list[[names_input_vec[i]]] = input_vec[(cumsum_size_input_vec[i-1] + 1):cumsum_size_input_vec[i]]
+			}
+		}
+		names(input_vec_list) = names_input_vec
+		return(input_vec_list)
+	}
+
+	if (sum(size_input_vec) != length(input_vec)) {
+		print(size_input_vec)
+		print(length(input_vec))
+		stop('Incorrect dimension')
+	}
+
+	ineligible_member = which(data_hh_i$Bef_sts + data_hh_i$Com_sts + data_hh_i$Std_w_ins == 1);
+	eligible_member = which(data_hh_i$Bef_sts + data_hh_i$Com_sts + data_hh_i$Std_w_ins == 0); 
+
+	observed_insurance = (data_hh_i$Vol_sts * (1 - (data_hh_i$Com_sts + data_hh_i$Bef_sts + data_hh_i$Std_w_ins)) + (-1) * (data_hh_i$Com_sts + data_hh_i$Bef_sts + data_hh_i$Std_w_ins)); 
+
+	list_insurance = matrix(c(observed_insurance, income_vec[1]), nrow=1)
+	observed_insurance_index = which(apply(list_insurance, 1, function(x) all(x[1:HHsize] == observed_insurance)))
+
+	theta = data_hh_i$tot_cost_normalized;
+	theta_pos_index = which(theta > 0);
+
+	inner_f = function(input_vec) {
+		input_vec_list = transform_size_input_vec(input_vec)
+		variance_matrix = diag(exp(2 * input_vec_list$sigma_thetabar), HHsize) + input_vec_list$mean_beta_theta_ind %*% t(input_vec_list$mean_beta_theta_ind);
+		if (nrow(variance_matrix) != ncol(variance_matrix)) {
+			stop('variance matrix dimension is incorrect')
+		}
+		if (length(theta_pos_index) == 1) {
+			return(-log(dnorm(log(theta[theta_pos_index]), mean=input_vec_list$mean_beta_theta[theta_pos_index], sd = sqrt(variance_matrix[theta_pos_index, theta_pos_index])) + 1e-20))
+		} else {
+			return(-log(mvtnorm::dmvnorm(log(theta[theta_pos_index]), mean = input_vec_list$mean_beta_theta[theta_pos_index], sigma = variance_matrix[theta_pos_index, theta_pos_index]) + 1e-20))
+		}
+		
+	}
+
+	if (length(theta_pos_index) > 0) {
+		input_vec_all = list(); 
+		input_vec_all[[1]] = input_vec; 
+
+		
+		for (i in 1:length(input_vec)) {
+			input_vec_new = input_vec; 
+			input_vec_new[i] = input_vec[i] + tol; 
+			input_vec_all[[i + 1]] = input_vec_new; 
+		}
+		
+		log_llh = lapply(input_vec_all, inner_f) %>% unlist()
+	} else {
+		log_llh = rep(0, length(input_vec) + 1)
+	}
+	
+	f0 = log_llh[1]; 
+
+	f1 = NULL; 
+	for (i in 1:length(input_vec)) {
+		f1[i] = log_llh[1 + i]; 
+	}
+	derivative = (f1 - f0)/tol; 
+	
+	derivative_param = list()
+	start=1; end = start;derivative_param$sigma_thetabar = derivative[start:end];
+	start = end + 1; end = start + HHsize - 1; derivative_param$beta_theta =apply(cbind(X_ind, data_hh_i$Year == 2006, data_hh_i$Year == 2008, data_hh_i$Year == 2010, data_hh_i$Year == 2012), 2, function(x) sum(x*derivative[start:end])); 
+	start = end + 1; end = start + HHsize - 1; derivative_param$beta_theta_ind =apply(X_ind, 2, function(x) sum(x*derivative[start:end])); 
+
+	return(list(f0, derivative_param))
+	
+}
+
+#' Construct parameters list.
+#'
+#' @param param_trial A vector 
+#' @param return_index LOGICAL, whether the position of the parameters is also returned. 
+#' @param init LOGICAL, whether the initial value needs to supplied 
+#'
+#' @return if return_index is TRUE, return a list, where the first element is a list of parameters (beta_theta, beta_delta, etc..) and the second element is the position of the parameters from the original vector. If return_index is FALSE, only the list of parameters is returned. If init==TRUE, return a vector of 0 with dimension equal to the dimension required.
+#' 
+#' @export
+#'
+#' @examples
+#' transform_param(return_index=TRUE, init=TRUE)
+#'
+#'
+transform_param = function(param_trial, return_index=FALSE, init=FALSE) {
+	param = list()
+	index = list()
+	
+	if (init) {
+		param_trial = rep(0, 100); 
+	}
+
+	start = 1; end = start + ncol(var_ind(data_hh_list[[1]])) + 4 -1; param$beta_theta = param_trial[start:end];  index$beta_theta = c(start:end)
+	start = end + 1; end = start + ncol(var_hh(data_hh_list[[1]])) -1; param$beta_r = param_trial[start:end]; index$beta_r = c(start:end)
+	start = end + 1; end = start + ncol(var_ind(data_hh_list[[1]])) -1; param$beta_gamma = param_trial[start:end]; index$beta_gamma = c(start:end)
+	start = end + 1; end = start + ncol(var_ind(data_hh_list[[1]])) -1; param$beta_delta = param_trial[start:end]; index$beta_delta = c(start:end)
+	# print(paste0('start index for theta = ', start, 'end index for theta = ', end))
+	start = end + 1; end = start + ncol(var_ind(data_hh_list[[1]])) -1; param$beta_theta_ind = param_trial[start:end]; index$beta_theta_ind = c(start:end)
+	start = end + 1; end = start; param$sigma_delta = param_trial[start] ; index$sigma_delta = c(start)
+	start = end + 1; end = start; param$sigma_omega = param_trial[start] ;  index$sigma_omega = c(start)
+	start = end + 1; end = start; param$sigma_theta = param_trial[start] ;  index$sigma_theta = c(start)
+	start = end + 1; end = start + ncol(var_hh(data_hh_list[[1]])) -1; param$beta_omega = param_trial[start:end]; index$beta_omega = c(start:end)
+	start = end + 1; end = start; param$sigma_r = (param_trial[start:end]); index$sigma_r = c(start:end)
+	start = end + 1; end = start; param$sigma_gamma = (param_trial[start:end]); index$sigma_gamma = c(start:end)
+	start = end + 1; end = start; param$sigma_thetabar=param_trial[end] ; index$sigma_thetabar = end; 
+
+	if (init == TRUE) {
+		return(param_trial[1:end])
+	}
+
+	if (return_index) {
+		return(list(param, index))
+	} else {
+		return(param)
+	}	
 }
 
 

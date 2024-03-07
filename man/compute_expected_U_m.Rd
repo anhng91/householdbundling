@@ -9,7 +9,8 @@ compute_expected_U_m(
   param,
   n_draw,
   default_sigma = 0.5,
-  taylor_order
+  taylor_order,
+  u_lowerbar = -10
 )
 }
 \arguments{
@@ -22,6 +23,8 @@ compute_expected_U_m(
 \item{default_sigma}{is between 0 and 1. Default to 0.5. represents the value of sigma_theta that is used for Taylor second-order approximation. sigma_theta is computed as default_sigma * exp(param$sigma_thetabar)}
 
 \item{taylor_order}{an integer, equal to the order of Taylor approximation used to approximate exp(-x^2/sigma^2) around (sigma^2 = sigma_0^2).}
+
+\item{u_lowerbar}{value of utility when the residual income is nonpositive. Default value is -10}
 }
 \value{
 a list that includes the draws of U, U squared, and m. These draws are list with length equal to the order of the Taylor approximation. Each component of U and U2 is a matrix of dimension the number of bundles x length of thetabar. Each component of m is a matrix with dimension equal to length of thetabar x hhsize.
