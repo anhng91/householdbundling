@@ -76,7 +76,8 @@ sample_no_sick = sample_index[which((lapply(sample_index, function(sample_index_
 
 message('Identify the sample for preference')
 sample_identify_pref = lapply(Com_HH_list_index, function(x) ifelse(x %in% c(sample_identify_theta, sample_no_sick), NA, x)) %>% unlist()
-sample_identify_theta = sample_identify_pref[!(is.na(sample_identify_pref))]
+sample_identify_pref = sample_identify_pref[!(is.na(sample_identify_pref))]
+
 
 param_trial = transform_param(return_index=TRUE, init=TRUE);
 transform_param_trial = transform_param(param_trial, return_index=TRUE)
