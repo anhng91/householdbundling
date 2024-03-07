@@ -84,7 +84,7 @@ transform_param_trial = transform_param(param_trial, return_index=TRUE)
 
 var_list = c('sigma_thetabar', 'beta_theta', 'beta_theta_ind');
 active_index = unlist(transform_param_trial[[2]][var_list]);
-
+active_index = setdiff(unlist(transform_param_trial[[2]][var_list]),tail(transform_param_trial[[2]][['beta_theta']], n=4));
 
 message('Preparing data for estimation')
 data_hh_list_theta = list()
@@ -103,6 +103,8 @@ if (Sys.info()[['sysname']] == 'Windows') {
   clusterEvalQ(cl, library('familyenrollment'))
   clusterExport(cl, c('active_index', 'param_trial', 'data_hh_list_theta'))
 }
+
+
 
 estimate_theta_parameter = splitfngr::optim_share(rep(0, length(active_index)), function(x) {
       x_new = param_trial; 
@@ -275,16 +277,9 @@ large_estimate_pref_parameter = optim(rep(0, 4), function(y) {
       }, control=list(maxit=1000), method='BFGS')
       param_trial[active_index] <<- estimate_pref_parameter$par
       return(estimate_pref_parameter$val) 
-}, control=list(maxit=1000), method='BFGS')
+}, control=list(maxit=1000), method='Nelder-Mead')
 
 transform_param_trial = transform_param(param_trial, return_index=TRUE)
-
-
-in_sample_fit_ineligible = mclapply(data_hh_list_pref, function(mini_data) tryCatch(moment_ineligible_hh(mini_data, transform_param_trial[[1]]), error=function(e) e), mc.cores=numcores)
-
-output_1 = do.call('c', lapply(in_sample_fit_ineligible, function(x) x[[1]]))
-output_2 = do.call('c', lapply(in_sample_fit_ineligible, function(x) x[[2]]))
-
 
 active_index = c(transform_param_trial[[2]]$sigma_r,  transform_param_trial[[2]]$sigma_theta, transform_param_trial[[2]]$beta_r); 
 
