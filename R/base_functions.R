@@ -672,7 +672,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 	}
 	
 	for (i in 1:HHsize) {
-		common_household_factor[,i] = household_random_factor * (X_ind[i,] %*% param$beta_theta_ind) + t(c(X_ind[i,], 0, 0 , 0, 0)) %*% param$beta_theta
+		common_household_factor[,i] = household_random_factor * (X_ind[i,] %*% param$beta_theta_ind) + t(c(X_ind[i,], data_hh_i$Year[i] == 2006, data_hh_i$Year[i] == 2008, data_hh_i$Year[i] == 2010, data_hh_i$Year[i] == 2012)) %*% param$beta_theta
 		individual_factor[,i] = qnorm(halton_mat[,i]);
 		theta_draw[,i] = exp(common_household_factor[,i] + individual_factor[,i] * exp(param$sigma_thetabar)) * (halton_mat[,2 * HHsize + i] >= sick_p[i])
 		random_xi_draws_i = halton_mat[,HHsize + i]; 

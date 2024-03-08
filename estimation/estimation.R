@@ -294,8 +294,8 @@ mat_YK = NULL;
 
 for (x in 1:length(sample_r_theta)) {
   print(x)
-  draw_theta_kappa = household_draw_theta_kappa_Rdraw(sample_r_theta[x], param = x_transform[[1]], n_draw_halton = 1000, n_draw_gauss=10, xi_parameters = xi_parameters, sick_parameters = sick_parameters)
-  data_sample_r_theta[[x]] = compute_expected_U_m(data_set = draw_theta_kappa, param = x_transform[[1]], taylor_order = 4)
+  draw_theta_kappa = household_draw_theta_kappa_Rdraw(sample_r_theta[x], param = transform_param_trial[[1]], n_draw_halton = 1000, n_draw_gauss=10, xi_parameters = xi_parameters, sick_parameters = sick_parameters)
+  data_sample_r_theta[[x]] = compute_expected_U_m(data_set = draw_theta_kappa, param = transform_param_trial[[1]], taylor_order = 4)
 }
 
 
