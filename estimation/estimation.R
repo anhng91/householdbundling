@@ -289,17 +289,23 @@ mat_M = do.call('rbind', lapply(data_hh_list[sample_r_theta], function(x) {
     return(cbind(x$M_expense, x$M_expense^2))
   }))
 
-data_sample_r_theta = list(); 
 mat_YK = NULL;
 
-for (x in 1:length(sample_r_theta)) {
-  print(x)
-  draw_theta_kappa = household_draw_theta_kappa_Rdraw(sample_r_theta[x], param = transform_param_trial[[1]], n_draw_halton = 1000, n_draw_gauss=10, xi_parameters = xi_parameters, sick_parameters = sick_parameters)
-  data_sample_r_theta[[x]] = compute_expected_U_m(data_set = draw_theta_kappa, param = transform_param_trial[[1]], taylor_order = 4)
+
+if (Sys.info()[['sysname']] == 'Windows') {
+  clusterExport(cl, c('sample_r_theta','transform_param_trial', 'xi_parameters', 'sick_parameters'))
+  draw_sample_r_theta = parLapply(cl, sample_r_theta,function(x) {
+    draw_theta_kappa = household_draw_theta_kappa_Rdraw(x, param = transform_param_trial[[1]], n_draw_halton = 1000, n_draw_gauss=10, xi_parameters = xi_parameters, sick_parameters = sick_parameters)
+    return(compute_expected_U_m(data_set = draw_theta_kappa, param = transform_param_trial[[1]], taylor_order = 4))
+  })
+} else {
+  draw_sample_r_theta = mclapply(sample_r_theta, function(x) {
+    draw_theta_kappa = household_draw_theta_kappa_Rdraw(x, param = transform_param_trial[[1]], n_draw_halton = 1000, n_draw_gauss=10, xi_parameters = xi_parameters, sick_parameters = sick_parameters)
+    return(compute_expected_U_m(data_set = draw_theta_kappa, param = transform_param_trial[[1]], taylor_order = 4))
+  }, mc.cores=numcores)
 }
 
-
-mat_YK = do.call('cbind', lapply(data_sample_r_theta, function(draw_theta_kappa) rbind(colMeans(draw_theta_kappa$kappa_draw[[1]]), colMeans(draw_theta_kappa$kappa_draw[[1]]^2), draw_theta_kappa$income[1], draw_theta_kappa$income[1]^2, colMeans(draw_theta_kappa$kappa_draw[[1]])*draw_theta_kappa$income[1])))
+mat_YK = do.call('cbind', lapply(draw_sample_r_theta, function(draw_theta_kappa) rbind(colMeans(draw_theta_kappa$kappa_draw[[1]]), colMeans(draw_theta_kappa$kappa_draw[[1]]^2), draw_theta_kappa$income[1], draw_theta_kappa$income[1]^2, colMeans(draw_theta_kappa$kappa_draw[[1]])*draw_theta_kappa$income[1])))
 
 
 estimate_r_thetabar = splitfngr::optim_share(rep(0, length(active_index)), function(x) {
@@ -313,12 +319,12 @@ estimate_r_thetabar = splitfngr::optim_share(rep(0, length(active_index)), funct
 
         if (Sys.info()[['sysname']] == 'Windows') {
           clusterExport(cl, 'x_transform',envir=environment())
-          moment_eligible_hh_output = parLapply(cl, data_sample_r_theta,function(mini_data) {
+          moment_eligible_hh_output = parLapply(cl, draw_sample_r_theta,function(mini_data) {
             output = tryCatch(moment_eligible_hh(mini_data, x_transform[[1]], default_sigma = 0.5),error=function(e) e)
             return(output)
           })
         } else {
-          moment_eligible_hh_output = mclapply(data_sample_r_theta, function(mini_data) tryCatch(moment_eligible_hh(mini_data, x_transform[[1]], default_sigma = 0.5), error=function(e) e), mc.cores=numcores)
+          moment_eligible_hh_output = mclapply(draw_sample_r_theta, function(mini_data) tryCatch(moment_eligible_hh(mini_data, x_transform[[1]], default_sigma = 0.5), error=function(e) e), mc.cores=numcores)
         }
 
         output_1 = do.call('c', lapply(moment_eligible_hh_output, function(x) x[[1]][1]))
