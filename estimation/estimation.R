@@ -12,24 +12,9 @@ library(randtoolbox)
 devtools::install(upgrade='never')
 library(familyenrollment)
 
-# Estimate the probability of getting sick 
-numcores = 2; 
-set.seed(job_index);
-sample_index = sample(1:length(data_hh_list), length(data_hh_list), replace=TRUE)
-
-message('merging household frames')
-data = do.call('rbind', data_hh_list[sample_index])
-
-message('computing the sick parameters')
-sick_parameters = optim(rep(0, ncol(var_ind(data_hh_list[[1]]))), fn = function(x) llh_sick(x, data), gr = function(x) grad_llh_sick(x, data), control=list(maxit = 1e4), method='BFGS')
-
-message('computing the coverage parameters')
-xi_parameters = optim(rep(0, 2 * ncol(var_ind(data_hh_list[[1]]))), fn = function(x) llh_xi(x, data), gr = function(x) grad_llh_xi(x, data), control=list(maxit = 1e4), method='BFGS')
-
-data_hh_theta = var_ind(data %>% filter(HHsize_s == HHsize));
 
 message('constructing the list of Compulsory households')
-Com_HH_list_index = lapply(sample_index, function(hh_index) {
+Com_HH_list_index = lapply(1:length(data_hh_list), function(hh_index) {
   data = data_hh_list[[hh_index]]; 
   if (0 == nrow(data %>% filter(Bef_sts + Com_sts + Std_w_ins == 0))) {
     return(hh_index);
@@ -42,7 +27,7 @@ Com_HH_list_index = lapply(sample_index, function(hh_index) {
 Com_HH_list_index = Com_HH_list_index[!(is.na(Com_HH_list_index))]
 
 message('constructing the list of Voluntary households')
-Vol_HH_list_index = lapply(sample_index, function(hh_index) {
+Vol_HH_list_index = lapply(1:length(data_hh_list), function(hh_index) {
   data = data_hh_list[[hh_index]]; 
   if (nrow(data) > nrow(data %>% filter(Bef_sts + Com_sts + Std_w_ins == 1))) {
     return(hh_index);
@@ -54,9 +39,10 @@ Vol_HH_list_index = lapply(sample_index, function(hh_index) {
 
 Vol_HH_list_index = Vol_HH_list_index[!(is.na(Vol_HH_list_index))] 
 
+full_index = 1:length(data_hh_list); 
 
 message('Identify the sample for theta')
-sample_identify_theta = sample_index[which((lapply(sample_index, function(sample_index_i) {
+sample_identify_theta = full_index[which((lapply(full_index, function(sample_index_i) {
       data_mini = data_hh_list[[sample_index_i]]
       if ((data_mini$Year[1] == 2008) & (data_mini$Income[1] < 0) & (data_mini$HHsize_s[1] == 0)) {
         return(1)
@@ -65,7 +51,7 @@ sample_identify_theta = sample_index[which((lapply(sample_index, function(sample
       }
     }) %>% unlist()) == 1)]
 
-sample_no_sick = sample_index[which((lapply(sample_index, function(sample_index_i) {
+sample_no_sick = full_index[which((lapply(full_index, function(sample_index_i) {
       data_mini = data_hh_list[[sample_index_i]]
       if (((data_mini$HHsize_s[1] == 0) & (sum(data_mini$sick_dummy == 0)))) {
         return(1)
@@ -78,6 +64,26 @@ message('Identify the sample for preference')
 sample_identify_pref = lapply(Com_HH_list_index, function(x) ifelse(x %in% c(sample_identify_theta, sample_no_sick), NA, x)) %>% unlist()
 sample_identify_pref = sample_identify_pref[!(is.na(sample_identify_pref))]
 
+
+# Bootstrapping indices 
+message(bootstrapping indices)
+numcores = 2; 
+set.seed(job_index);
+sample_index = sample(1:length(data_hh_list), length(data_hh_list), replace=TRUE)
+sample_r_theta = sample(Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, function(x) ifelse(nrow(data_hh_list[[x]]) <= 4, x, NA)))))], 1000)
+sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
+sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
+
+
+message('merging household frames')
+data = do.call('rbind', data_hh_list[sample_index])
+
+# Estimate the probability of getting sick 
+message('computing the sick parameters')
+sick_parameters = optim(rep(0, ncol(var_ind(data_hh_list[[1]]))), fn = function(x) llh_sick(x, data), gr = function(x) grad_llh_sick(x, data), control=list(maxit = 1e4), method='BFGS')
+
+message('computing the coverage parameters')
+xi_parameters = optim(rep(0, 2 * ncol(var_ind(data_hh_list[[1]]))), fn = function(x) llh_xi(x, data), gr = function(x) grad_llh_xi(x, data), control=list(maxit = 1e4), method='BFGS')
 
 param_trial = transform_param(return_index=TRUE, init=TRUE);
 transform_param_trial = transform_param(param_trial, return_index=TRUE)
@@ -282,8 +288,6 @@ large_estimate_pref_parameter = optim(rep(0, 4), function(y) {
 transform_param_trial = transform_param(param_trial, return_index=TRUE)
 
 active_index = c(transform_param_trial[[2]]$sigma_r,  transform_param_trial[[2]]$sigma_theta, transform_param_trial[[2]]$beta_r); 
-
-sample_r_theta = sample(Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, function(x) ifelse(nrow(data_hh_list[[x]]) <= 4, x, NA)))))], 1000)
 
 mat_M = do.call('rbind', lapply(data_hh_list[sample_r_theta], function(x) {
     return(cbind(x$M_expense, x$M_expense^2))
