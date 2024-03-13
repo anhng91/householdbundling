@@ -66,7 +66,7 @@ sample_identify_pref = sample_identify_pref[!(is.na(sample_identify_pref))]
 
 
 # Bootstrapping indices 
-message(bootstrapping indices)
+message('bootstrapping indices')
 numcores = 2; 
 set.seed(job_index);
 sample_index = sample(1:length(data_hh_list), length(data_hh_list), replace=TRUE)
