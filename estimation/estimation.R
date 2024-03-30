@@ -325,7 +325,7 @@ estimate_r_thetabar = optimize(function(x) {
             prob_full_insured = (1 - pnorm(output_hh$root_r, mean = output_hh$X_hh %*% x_r[-length(x_r)], sd = exp(x_r[length(x_r)])))/(1 - pnorm(0, mean = output_hh$X_hh %*% x_r[-length(x_r)], sd = exp(x_r[length(x_r)])))
             return(prob_full_insured)
           }))
-
+          
           return(-sum(full_insurance_indicator * log(output_1) + (1 - full_insurance_indicator) * log(1 - output_1)))
         },control=list(maxit=1000), method='BFGS') 
 
