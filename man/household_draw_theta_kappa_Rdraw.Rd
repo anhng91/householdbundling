@@ -10,7 +10,8 @@ household_draw_theta_kappa_Rdraw(
   n_draw_halton = 1000,
   n_draw_gauss = 10,
   sick_parameters,
-  xi_parameters
+  xi_parameters,
+  u_lowerbar = -10
 )
 }
 \arguments{
@@ -21,6 +22,12 @@ household_draw_theta_kappa_Rdraw(
 \item{n_draw_halton}{this is the number of halton draws, default to 1000}
 
 \item{n_draw_gauss}{this is number of Gauss  points.}
+
+\item{sick_parameters}{a list produced from optim}
+
+\item{xi_parameters}{a list produced from optim}
+
+\item{u_lowerbar}{value of utility when income constraint is violated}
 }
 \value{
 a list that includes the draws of household-related objects,taking into account the sick parameters and the distribution of coverage. This does not take into account estimated preference parameters or unconditional distribution of health shocks. See \code{compute_expected_U_m} for the draws post-estimation of preference parameters and health shocks distribution.

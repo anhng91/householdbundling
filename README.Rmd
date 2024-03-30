@@ -1,5 +1,5 @@
 ---
-output: github_document
+output: html_document
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
@@ -46,31 +46,52 @@ This function computes the following expectation w.r.t $U$ and $r$, where $r$ is
     & \left[ 1 + \frac{Var(U)}{2} \left( \sigma^2  \left[1 - \frac{-\mu/\sigma \phi(-\mu/\sigma)}{1 - \Phi(-\mu/\sigma)} - \left(\phi(-\mu/\sigma)/(1 - \Phi(-\mu/\sigma))\right)^2 \right] + \left(\mu + \phi(-\mu/\sigma)/(1 - \Phi(-\mu/\sigma))\sigma \right)^2 \right) \right]
   \end{align*} 
 \]
+
 The arguments of `second_taylor_CARA` is `a`, which is $\mathbb{E}(U)$, `b`, which is $Var(U)$, and `mu` and `sigma`. 
 
 ### second_taylor_CARA_test
 This function computes the numerical expectation of the function in `second_taylor_CARA`. 
 
 
-### household_draw_theta_kappa_Rdraw
+### household_draw_theta_kappa_Rdraw_obsolete
 Note: in this function, I use Gauss Hermite to approximate the expectation w.r.t $\bar{\theta}$. Note that Gauss Hermite is very accurate when the integral is over $X$, which is normally distributed with an unknown $\sigma$. However, the Hermite draws need to be normalized to center around the mean of the distribution of $X$. In addition, the Hermite draws are also scaled to have variance equal to the unconditional variance of each member's health shocks. 
 
 First, draw (conditional) $\theta$ based on the unconditional distribution of $\theta$. Then, approximate the following integral, which is the expected utility conditional on health status $\bar{\theta}$, as 
+
 \[
   \begin{align*}
     \int U(\pmb{\theta}, Y, \pmb{\kappa}) \exp(-1/2 (\log (\pmb{\theta} - \pmb{\bar{\theta}}) \sigma_{\pmb{\theta}}^{-2} \log (\pmb{\theta} - \pmb{\bar{\theta}})')) d\pmb{\theta}  \\
     \approx \mathbb{E}\left[ U(\pmb{\theta}, Y, \pmb{\kappa}) \exp(-1/2 (\log (\pmb{\theta} - \pmb{\bar{\theta}}) \sigma_{\theta|\pmb{\theta}}^{-2} \log (\pmb{\theta} - \pmb{\bar{\theta}})') + 1/2 \log(\pmb{\theta}) \sigma_{\theta}^{-2} \log(\pmb{\theta})')\right]
   \end{align*}
 \]
+
 where the expectation is taken over draws of $\theta$, drawn from the unconditional distribution. Note that this approximation works well when $\bar{\theta}$ is not too far from the unconditional mean because the variance of the <i>conditional</i> distribution is smaller than that of the unconditional distribution. 
 
 
 The draws of $\bar{\theta}$ and their weights are stored in `Hermite_draw_mat` of the evaluated output. The draws of $\theta$  and coinsurance rates are stored in `theta_draw` and `kappa_draw`.
 
-The computation of $\exp(-1/2 (\log (\pmb{\theta} - \pmb{\bar{\theta}}) \sigma_{\theta|\pmb{\bar{\theta}}}^{-2} \log (\pmb{\theta} - \pmb{\bar{\theta}})')$ requires knowing $\sigma_{\theta}$. So instead of computing this function directly, I use a second-order Taylor approximation around $-1/2 (\log (\pmb{\theta} - \pmb{\bar{\theta}}) \sigma_{\theta}^{-2} \log (\pmb{\theta} - \pmb{\bar{\theta}})'$
+The computation of $\exp(-1/2 (\log (\pmb{\theta} - \pmb{\bar{\theta}}) \sigma_{\theta|\pmb{\bar{\theta}}}^{-2} \log (\pmb{\theta} - \pmb{\bar{\theta}})')$ requires knowing $\sigma_{\theta}$. So instead of computing this function directly, I use Taylor approximation around some $\sigma_0^2$
 \[
     \exp(-1/2(x-\mu)^2/\sigma^2) =  \sum_{j = 0} \exp(-1/2(x-\mu)^2/\sigma_0^2) \frac{(-1/2(x-\mu)^2)^j}{j!}(\sigma^{-2} - \sigma_0^{-2})^j 
 \] 
+The issue with this function was that currently, the expected utility is taken also over $(\omega, \gamma, \delta)$, which is not correct. therefore, this function has been deemed obsolete. 
+
+### household_draw_theta_kappa_Rdraw 
+This function takes on data specific from each household, combines with `param`. This function draws $\theta$ based on Hermite draws. However, we use a transformed Hermite draws, $\theta = \verb|Hermite_draw| \times \sqrt{2} \times  \sigma_{\bar{\theta}}$. This is because the true $\sigma_{\theta}$ is strictly less than $\sigma_{\bar{\theta}}$, and the Hermite quadrature works better with this transformation. 
+
+For each member's draws of $\theta$, also draw $\kappa$ if the person is insured. This function should produce a list, the first list is the draws of $\theta$, and the second list is the corresponding draws of $\kappa$.  
+
+### compute_expected_U_m 
+For this function, we are computing the expected value of 
+\[
+    U = \frac{R^{1-\omega} - 1}{1-\omega} - \sum \theta \delta \frac{(1 + \kappa)^{1-\gamma} - 1}{1 - \gamma}
+\]
+and 
+\[
+    OOP = \theta\kappa + \theta \kappa \delta R^{\omega} (1 + \kappa)^{-\gamma}
+\]
+where $\delta$ is truncated normal, $\gamma$ is also truncated normal, $\omega$ is truncated normal, and $\theta$ is log-normally distributed. The expectation of $m$ is over $\kappa, \delta, \omega, \theta$. The expectation w.r.t $\kappa, \delta, \omega$ have an analytical form (because of the truncated normal assumption). The expectation w.r.t $\theta$ cannot be done analytically because an insured individual has nonlinear $\kappa$. Therefore, for integration over $\theta$, we use numerical simulation with Halton draws.  
+
 
 ## Data objects 
 
