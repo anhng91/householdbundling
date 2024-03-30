@@ -286,9 +286,9 @@ if (!(file.exists(paste0('../../householdbundling_estimate/estimate_',job_index,
 } else {
   param_trial <- readRDS(paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
 }
-transform_param_trial = transform_param(param_trial, return_index=TRUE)
+x_transform = transform_param(param_trial, return_index=TRUE)
 
-active_index = c(transform_param_trial[[2]]$sigma_r,  transform_param_trial[[2]]$sigma_theta, transform_param_trial[[2]]$beta_r); 
+active_index = c(x_transform[[2]]$sigma_r,  x_transform[[2]]$sigma_theta, x_transform[[2]]$beta_r); 
 
 mat_M = do.call('rbind', lapply(data_hh_list[sample_r_theta], function(x) {
     return(cbind(x$M_expense, x$M_expense^2))

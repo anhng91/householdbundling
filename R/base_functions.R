@@ -559,20 +559,20 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 				if (is.na(root_r)) {
 					if (fr(1e-6) < 0) {
 						prob_full_insured[j] = 1; root_r = 1e-6; 
-						root_r[j] = root_r;
+						root_r_vec[j] = root_r;
 					} else if (fr(upper_r) > 0) {
 						prob_full_insured[j] = 0; root_r = upper_r; 
-						root_r[j] = root_r;
+						root_r_vec[j] = root_r;
 					} else {
 						root_r = uniroot(fr, c(1e-6, upper_r))$root; 
 						prob_full_insured[j] = (1 - pnorm(root_r, mean = X_hh %*% param$beta_r, sd = exp(param$sigma_r)))/(1 - pnorm(0, mean = X_hh %*% param$beta_r, sd = exp(param$sigma_r))); 
-						root_r[j] = root_r;
+						root_r_vec[j] = root_r;
 					}
 				} else {
 					if (root_r < upper_r & fr(root_r) > 0) {
 						root_r = uniroot(fr, c(root_r, upper_r))$root; 
 						prob_full_insured[j] = (1 - pnorm(root_r, mean = X_hh %*% param$beta_r, sd = exp(param$sigma_r)))/(1 - pnorm(0, mean = X_hh %*% param$beta_r, sd = exp(param$sigma_r)));
-						root_r[j] = root_r;
+						root_r_vec[j] = root_r;
 					} 
 				}
 			}
@@ -586,7 +586,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 		output = list(); 
 		output$Em = colMeans(apply(m, 2, function(x) x * prob_full_insured))/sum(prob_full_insured)
 		output$Prob_full = mean(prob_full_insured)
-		output$root_r = root_r
+		output$root_r = root_r_vec
 		output$m = m
 		output$X_hh = var_hh(data_hh_i)
 	} else {
