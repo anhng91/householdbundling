@@ -569,9 +569,15 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 						root_r_vec[j] = root_r;
 					}
 				} else {
-					if (root_r < upper_r & fr(root_r) > 0) {
+					if (fr(root_r) < 0) {
+						prob_full_insured[j] = 1; root_r = root_r; 
+						root_r_vec[j] = root_r;
+					} else if (fr(upper_r) > 0) {
+						prob_full_insured[j] = 0; root_r = upper_r; 
+						root_r_vec[j] = root_r;
+					} else {
 						root_r = uniroot(fr, c(root_r, upper_r))$root; 
-						prob_full_insured[j] = (1 - pnorm(root_r, mean = X_hh %*% param$beta_r, sd = exp(param$sigma_r)))/(1 - pnorm(0, mean = X_hh %*% param$beta_r, sd = exp(param$sigma_r)));
+						prob_full_insured[j] = (1 - pnorm(root_r, mean = X_hh %*% param$beta_r, sd = exp(param$sigma_r)))/(1 - pnorm(0, mean = X_hh %*% param$beta_r, sd = exp(param$sigma_r))); 
 						root_r_vec[j] = root_r;
 					} 
 				}
