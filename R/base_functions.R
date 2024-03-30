@@ -553,6 +553,8 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 				U_drop[[i+1]] = (lapply((R_draw[[i+1]]^(1 - omega[j]) - 1)/(1 - omega[j]), function(x) ifelse(is.infinite(x), 0, x)) %>% unlist() - rowSums(t(apply(theta_draw, 1, function(x) x * delta[j,])) * t(apply(kappa_draw[[i+1]], 1, function(x) ((x + 1)^(1 - gamma[j,]) - 1)/(1 - gamma[j,]))))) * (R_draw[[i+1]] >= 0) + u_lowerbar * (R_draw[[i+1]] < 0)
 
 				fr = function(r) mean(exp(-r * U_full_insurance) - exp(-r * U_drop[[i+1]]), na.rm=TRUE)
+				print(paste0('fr = ', fr(1e-6)));
+				print(paste0('fr = ', fr(4)));
 
 				if (is.na(root_r)) {
 					if (fr(1e-6) < 0) {

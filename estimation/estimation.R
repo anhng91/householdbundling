@@ -284,8 +284,7 @@ if (!(file.exists(paste0('../../householdbundling_estimate/estimate_',job_index,
         return(estimate_pref_parameter$val) 
   }, control=list(maxit=1000), method='Nelder-Mead')
 } else {
-  readRDS(paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
-  param_trial = param_final;
+  param_trial <- readRDS(paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
 }
 transform_param_trial = transform_param(param_trial, return_index=TRUE)
 
@@ -304,14 +303,14 @@ X_r_all = do.call('rbind', lapply(data_hh_list[sample_r_theta], function(x) var_
 estimate_r_thetabar = optimize(function(x) {
       # optim_rf_trial = optim(trial_paraam[-zero_index], function(x) {
         x_new = param_trial; 
-        x_new$sigma_theta = x; 
+        x_new[x_transform[[2]]$sigma_theta] = x; 
         x_transform = transform_param(x_new,return_index=TRUE); 
         print('----------------');
         print('x = '); print(x)
 
 
         if (Sys.info()[['sysname']] == 'Windows') {
-          clusterExport(cl, 'x_transform',envir=environment())
+          clusterExport(cl, c('x_transform', 'sick_parameters', 'xi_parameters'),envir=environment())
           moment_eligible_hh_output = parLapply(cl, sample_r_theta,function(mini_data_index) {
             output = tryCatch(household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], 100, 10, sick_parameters, xi_parameters, u_lowerbar = -10),error=function(e) e)
             return(output)
@@ -341,7 +340,7 @@ estimate_r_thetabar = optimize(function(x) {
           }))
 
         return(mean((output_2 - Em)^2))
-      }, control=list(maxit=1000), method='BFGS') 
+      }, c(-3,3)) 
 
 param_trial[x_transform[[2]]$sigma_theta] <- estimate_r_thetabar$par
 param_final = param_trial
