@@ -493,6 +493,10 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 		for (i in 1:HHsize) {
 			lower_threshold = pnorm(0, mean = beta_gamma[i], sd = s_gamma) 
 			gamma[, i] = qnorm(lower_threshold * (1 - halton_mat_list$gamma[,i]) + 1 * halton_mat_list$gamma[,i]) * s_gamma + beta_gamma[i]; 
+			which_infinite = which(is.infinite(gamma[,i]))
+			if (length(which_infinite) > 0) {
+				gamma[which_infinite,i] = 0; 
+			}
 		}
 		beta_delta = X_ind %*% param$beta_delta; 
 		s_delta = exp(param$sigma_delta); 
@@ -500,6 +504,10 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 		for (i in 1:HHsize) {
 			lower_threshold = pnorm(0, mean = beta_delta[i], sd = s_delta) 
 			delta[, i] = qnorm(lower_threshold * (1 - halton_mat_list$delta[,i]) + 1 * halton_mat_list$delta[,i]) * s_delta + beta_delta[i]; 
+			which_infinite = which(is.infinite(delta[,i]))
+			if (length(which_infinite) > 0) {
+				delta[which_infinite,i] = 0; 
+			}
 		}
 		 
 		s_theta = sqrt(1/(1 + exp(param$sigma_theta))) * exp(param$sigma_thetabar); 
@@ -553,8 +561,18 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 				U_drop[[i+1]] = (lapply((R_draw[[i+1]]^(1 - omega[j]) - 1)/(1 - omega[j]), function(x) ifelse(is.infinite(x), 0, x)) %>% unlist() - rowSums(matrix(t(apply(theta_draw, 1, function(x) x * delta[j,])), ncol=HHsize) * matrix(t(apply(kappa_draw[[i+1]], 1, function(x) ((x + 1)^(1 - gamma[j,]) - 1)/(1 - gamma[j,]))), ncol=HHsize))) * (R_draw[[i+1]] >= 0) + u_lowerbar * (R_draw[[i+1]] < 0)
 
 				fr = function(r) mean(exp(-r * U_full_insurance) - exp(-r * U_drop[[i+1]]), na.rm=TRUE)
-				print(paste0('fr = ', fr(1e-6)));
-				print(paste0('fr = ', fr(4)));
+				if (is.nan(fr(1e-6)) | is.nan(fr(4))) {
+					print(summary(lapply((R_draw[[1]]^(1 - omega[j]) - 1)/(1 - omega[j]), function(x) ifelse(is.infinite(x), 0, x)) %>% unlist()))
+
+					print('theta_draw'); print(theta_draw %>% summary)
+					print('delta'); print(delta[j,])
+					print('kappa_draw'); print(summary(kappa_draw[[1]]));
+					print('gamma'); print(gamma[j,])
+					print(summary( - rowSums(matrix(t(apply(kappa_draw[[1]], 1, function(x) ((x + 1)^(1 - gamma[j,]) - 1)/(1 - gamma[j,]))), ncol=HHsize))))
+					print(summary(matrix(t(apply(theta_draw, 1, function(x) x * delta[j,])), ncol=HHsize)))
+
+					print(summary(U_drop[[i + 1]]))
+				}
 
 				if (is.na(root_r)) {
 					if (fr(1e-6) < 0) {
