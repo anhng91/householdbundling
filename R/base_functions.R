@@ -521,6 +521,10 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 		s_omega = exp(param$sigma_omega)
 		lower_threshold = pnorm(0, mean = beta_omega, sd = s_omega)
 		omega = qnorm(lower_threshold * (1 - halton_mat_list$omega) + halton_mat_list$omega) * s_omega + beta_omega
+		which_infinite = which(is.infinite(omega))
+		if (length(which_infinite) > 0) {
+			omega[which_infinite] = 0; 
+		}
 		prob_full_insured = NULL
 
 		root_r_vec = NULL 
@@ -630,6 +634,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 
 	return(output)	
 }
+
 
 #' Compute the matrix representing individual characteristics of a household.
 #'
