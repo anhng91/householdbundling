@@ -322,10 +322,12 @@ estimate_r_thetabar = optimize(function(x) {
         
         optim_r = optim(x_new[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r)], function(x_r) {
           output_1 = do.call('c', lapply(moment_eligible_hh_output, function(output_hh) {
-            prob_full_insured = (1 - pnorm(output_hh$root_r, mean = output_hh$X_hh %*% x_r[-length(x_r)], sd = exp(x_r[length(x_r)])))/(1 - pnorm(0, mean = output_hh$X_hh %*% x_r[-length(x_r)], sd = exp(x_r[length(x_r)])))
+            prob_full_insured = mean((1 - pnorm(output_hh$root_r, mean = output_hh$X_hh %*% x_r[-length(x_r)], sd = exp(x_r[length(x_r)])))/sum(1 - pnorm(0, mean = output_hh$X_hh %*% x_r[-length(x_r)], sd = exp(x_r[length(x_r)]))))
             return(prob_full_insured)
           }))
-          
+
+          output_1 = lapply(output_1, function(x_) ifelse(x_ == 0, x_ + 1e-5, ifelse(x_ == 1, 1 - 1e-5, x_))) %>% unlist()
+
           return(-sum(full_insurance_indicator * log(output_1) + (1 - full_insurance_indicator) * log(1 - output_1)))
         },control=list(maxit=1000), method='BFGS') 
 

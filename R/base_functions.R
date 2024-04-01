@@ -595,10 +595,15 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 						root_r_vec[j] = root_r;
 					}
 				} else {
+					fr_upper_r = fr(upper_r);
+					if (is.nan(fr_upper_r)) {
+						fr_upper_r = fr(upper_r/2);
+					}
+
 					if (fr(root_r) < 0) {
 						prob_full_insured[j] = 1; root_r = root_r; 
 						root_r_vec[j] = root_r;
-					} else if (fr(upper_r) > 0) {
+					} else if (fr_upper_r > 0) {
 						prob_full_insured[j] = 0; root_r = upper_r; 
 						root_r_vec[j] = root_r;
 					} else {
