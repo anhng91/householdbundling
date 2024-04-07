@@ -1209,4 +1209,3 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 	return(output)	
 }
 
-counterfactual_household_draw_theta_kappa_Rdraw(1, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample, u_lowerbar = -10, policy_mat_hh = policy_mat[[1]], seed_number = 1, constraint_function = function(x) x)
