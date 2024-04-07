@@ -350,6 +350,6 @@ estimate_r_thetabar = optimize(function(x) {
         return(mean((output_2 * full_insurance_indicator - mat_M[,1] * full_insurance_indicator)^2))
       }, c(-3,3)) 
 
-param_trial[x_transform[[2]]$sigma_theta] <- estimate_r_thetabar$par
+param_trial[x_transform[[2]]$sigma_theta] <- estimate_r_thetabar$minimum
 param_final = param_trial
 saveRDS(param_final, file=paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))

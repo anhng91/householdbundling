@@ -13,8 +13,10 @@ counterfactual_household_draw_theta_kappa_Rdraw(
   n_draw_gauss = 10,
   sick_parameters,
   xi_parameters,
-  household_random_factor,
-  individual_factor
+  u_lowerbar = -10,
+  policy_mat_hh,
+  seed_number = 1,
+  constraint_function = function(x) x
 )
 }
 \arguments{
@@ -26,12 +28,18 @@ counterfactual_household_draw_theta_kappa_Rdraw(
 
 \item{n_draw_gauss}{this is number of Gauss  points.}
 
-\item{household_random_factor}{is the draw of the household's common shock that generates the within-household correlation in health risks, should come from a N(0,1) distribution}
+\item{sick_parameters}{estimated sick_parameters}
 
-\item{individual_factor}{is a vector (size HHsize) of the draws of the individual members' health shock (should come from a N(0,1) distribution)}
+\item{xi_parameters}{estimated xi_parameters}
+
+\item{u_lowerbar}{value of u when income is negative}
+
+\item{policy_mat_hh}{is the policy matrix (might be actual or a counterfactual), should follow the format of policy_mat[\link{hh_index}]}
+
+\item{constraint_function}{is a function that can reflect whether we are imposing pure bundling or something else on the possible choice set. For example, for pure bundling, constraint_function = function(x) {x\link{-c(1,length(x))} = -Inf; return(x)}}
 }
 \value{
-a list that includes the draws of household-related objects,taking into account the sick parameters and the distribution of coverage. This does not take into account estimated preference parameters or unconditional distribution of health shocks. See \code{compute_expected_U_m} for the draws post-estimation of preference parameters and health shocks distribution.
+a list that includes the draws of household-related objects,taking into account the sick parameters and the distribution of coverage, the optimal insurance choice, the amount of oop, and the cost to the insurance company
 }
 \description{
 Compute the counterfactual draws (preference parameters independent). This is different from household_draw_theta_kappa_Rdraw because the draws of thetabar
@@ -39,7 +47,7 @@ is only conducted once, and there is no integration over thetabar. Also, the ins
 all possible bundles.
 }
 \examples{
-individual_factor = rnorm(nrow(sample_data_and_parameter$data$data))
-counterfactual_household_draw_theta_kappa_Rdraw(1, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample, rnorm(1), individual_factor)
+counterfactual_household_draw_theta_kappa_Rdraw(3, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample, u_lowerbar = -10, policy_mat_hh = policy_mat[[3]], seed_number = 1, constraint_function = function(x) x)
+
 
 }
