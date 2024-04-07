@@ -347,7 +347,7 @@ estimate_r_thetabar = optimize(function(x) {
         print(paste0('x = ',x))
         print(paste0('optim_r')); print(optim_r$par)
         print('------')
-        return(mean((output_2 - mat_M[,1])^2))
+        return(mean((output_2 * full_insurance_indicator - mat_M[,1] * full_insurance_indicator)^2))
       }, c(-3,3)) 
 
 param_trial[x_transform[[2]]$sigma_theta] <- estimate_r_thetabar$par
