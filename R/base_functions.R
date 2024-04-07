@@ -580,34 +580,46 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 
 				if (is.na(root_r)) {
 					fr_upper_r = fr(upper_r);
-					if (is.nan(fr_upper_r)) {
-						fr_upper_r = fr(upper_r/2);
+					upper_r_temp = upper_r; 
+					while (is.nan(fr_upper_r)) {
+						upper_r_temp = upper_r_temp/2
+						fr_upper_r = fr(upper_r_temp);
 					}
+					print(paste0('fr_upper_r', fr_upper_r)); 
 					if (fr(1e-6) < 0) {
 						prob_full_insured[j] = 1; root_r = 1e-6; 
 						root_r_vec[j] = root_r;
 					} else if (fr_upper_r > 0) {
-						prob_full_insured[j] = 0; root_r = upper_r; 
+						prob_full_insured[j] = 0; root_r = upper_r_temp; 
 						root_r_vec[j] = root_r;
 					} else {
-						root_r = uniroot(fr, c(1e-6, upper_r))$root; 
+						print(paste0('upper_r = ', upper_r))
+						root_r = uniroot(fr, c(1e-6, upper_r_temp))$root; 
 						prob_full_insured[j] = (1 - pnorm(root_r, mean = X_hh %*% param$beta_r, sd = exp(param$sigma_r)))/(1 - pnorm(0, mean = X_hh %*% param$beta_r, sd = exp(param$sigma_r))); 
 						root_r_vec[j] = root_r;
 					}
-				} else {
+				} else if (root_r < upper_r) {
 					fr_upper_r = fr(upper_r);
-					if (is.nan(fr_upper_r)) {
-						fr_upper_r = fr(upper_r/2);
+					upper_r_temp = upper_r; 
+
+					while (is.nan(fr_upper_r)) {
+						upper_r_temp = upper_r_temp/2
+						fr_upper_r = fr(upper_r_temp);
 					}
+
+					print(paste0('fr_upper_r', fr_upper_r)); 
+					print(paste0('root_r = ', root_r))
+					print(paste0('fr_root_r = ', fr(root_r)));
 
 					if (fr(root_r) < 0) {
 						prob_full_insured[j] = 1; root_r = root_r; 
 						root_r_vec[j] = root_r;
 					} else if (fr_upper_r > 0) {
-						prob_full_insured[j] = 0; root_r = upper_r; 
+						prob_full_insured[j] = 0; root_r = upper_r_temp; 
 						root_r_vec[j] = root_r;
 					} else {
-						root_r = uniroot(fr, c(root_r, upper_r))$root; 
+						print(paste0('upper_r = ', upper_r))
+						root_r = uniroot(fr, c(root_r, upper_r_temp))$root; 
 						prob_full_insured[j] = (1 - pnorm(root_r, mean = X_hh %*% param$beta_r, sd = exp(param$sigma_r)))/(1 - pnorm(0, mean = X_hh %*% param$beta_r, sd = exp(param$sigma_r))); 
 						root_r_vec[j] = root_r;
 					} 

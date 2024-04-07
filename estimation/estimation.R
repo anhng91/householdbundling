@@ -69,7 +69,7 @@ message('bootstrapping indices')
 numcores = 2; 
 set.seed(job_index);
 sample_index = sample(1:length(data_hh_list), length(data_hh_list), replace=TRUE)
-sample_r_theta = sample(Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, function(x) ifelse(nrow(data_hh_list[[x]]) <= 4, x, NA)))))], 1000)
+sample_r_theta = sample(Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, function(x) ifelse(nrow(data_hh_list[[x]]) <= 4, x, NA)))))], 5000)
 sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
 sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 
@@ -300,6 +300,8 @@ full_insurance_indicator = do.call('c', lapply(data_hh_list[sample_r_theta], fun
 
 X_r_all = do.call('rbind', lapply(data_hh_list[sample_r_theta], function(x) var_hh(x)))
 
+save_obj_outside = NULL;
+save_param_outside = NULL; 
 estimate_r_thetabar = optimize(function(x) {
       # optim_rf_trial = optim(trial_paraam[-zero_index], function(x) {
         x_new = param_trial; 
@@ -319,7 +321,9 @@ estimate_r_thetabar = optimize(function(x) {
           moment_eligible_hh_output = mclapply(sample_r_theta, function(mini_data_index) tryCatch(household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], 100, 10, sick_parameters, xi_parameters, u_lowerbar = -10), error=function(e) e), mc.cores=numcores)
         }
 
-        
+        save_param_outside <<- x_transform[[1]]
+
+        save_obj_outside <<- moment_eligible_hh_output
         optim_r = optim(x_new[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r)], function(x_r) {
           output_1 = do.call('c', lapply(moment_eligible_hh_output, function(output_hh) {
             prob_full_insured = mean((1 - pnorm(output_hh$root_r, mean = output_hh$X_hh %*% x_r[-length(x_r)], sd = exp(x_r[length(x_r)])))/sum(1 - pnorm(0, mean = output_hh$X_hh %*% x_r[-length(x_r)], sd = exp(x_r[length(x_r)]))))
@@ -340,8 +344,10 @@ estimate_r_thetabar = optimize(function(x) {
             Em = colMeans(apply(output_hh$m, 2, function(x) x * prob_full_insured))/sum(prob_full_insured)
             return(Em)
           }))
-
-        return(mean((output_2 - Em)^2))
+        print(paste0('x = ',x))
+        print(paste0('optim_r')); print(optim_r$par)
+        print('------')
+        return(mean((output_2 - mat_M[,1])^2))
       }, c(-3,3)) 
 
 param_trial[x_transform[[2]]$sigma_theta] <- estimate_r_thetabar$par
