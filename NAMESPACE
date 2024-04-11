@@ -3,6 +3,7 @@
 export(CRRA_fun_Gauss)
 export(all_combn)
 export(all_insurance)
+export(counterfactual_bundling)
 export(counterfactual_household_draw_theta_kappa_Rdraw)
 export(d_mean_E_XW)
 export(d_truncated_normal_mean)

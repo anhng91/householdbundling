@@ -284,11 +284,15 @@ if (!(file.exists(paste0('../../householdbundling_estimate/estimate_',job_index,
         return(estimate_pref_parameter$val) 
   }, control=list(maxit=1000), method='Nelder-Mead')
 } else {
-  param_trial <- readRDS(paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
+  param_final <- readRDS(paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
+  param_trial = param_final$other
 }
+
 x_transform = transform_param(param_trial, return_index=TRUE)
 
 active_index = c(x_transform[[2]]$sigma_r,  x_transform[[2]]$sigma_theta, x_transform[[2]]$beta_r); 
+
+param_trial[active_index] = 0; 
 
 mat_M = do.call('rbind', lapply(data_hh_list[sample_r_theta], function(x) {
     return(cbind(x$M_expense, x$M_expense^2))
@@ -347,9 +351,14 @@ estimate_r_thetabar = optimize(function(x) {
         print(paste0('x = ',x))
         print(paste0('optim_r')); print(optim_r$par)
         print('------')
-        return(mean((output_2 * full_insurance_indicator - mat_M[,1] * full_insurance_indicator)^2))
+        return((mean(output_2 * full_insurance_indicator)/mean(full_insurance_indicator) - mean(mat_M[,1] * full_insurance_indicator)/mean(full_insurance_indicator))^2)
       }, c(-3,3)) 
 
 param_trial[x_transform[[2]]$sigma_theta] <- estimate_r_thetabar$minimum
-param_final = param_trial
+param_final = list(); 
+param_final$other = param_trial; 
+param_final$xi = xi_parameters;
+param_final$sick = sick_parameters
+
 saveRDS(param_final, file=paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
+

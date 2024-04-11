@@ -16,7 +16,9 @@ counterfactual_household_draw_theta_kappa_Rdraw(
   u_lowerbar = -10,
   policy_mat_hh,
   seed_number = 1,
-  constraint_function = function(x) x
+  constraint_function = function(x) x,
+  within_hh_heterogeneity = list(omega = TRUE, gamma = TRUE, delta = TRUE, theta_bar =
+    TRUE)
 )
 }
 \arguments{
@@ -37,6 +39,8 @@ counterfactual_household_draw_theta_kappa_Rdraw(
 \item{policy_mat_hh}{is the policy matrix (might be actual or a counterfactual), should follow the format of policy_mat[\link{hh_index}]}
 
 \item{constraint_function}{is a function that can reflect whether we are imposing pure bundling or something else on the possible choice set. For example, for pure bundling, constraint_function = function(x) {x\link{-c(1,length(x))} = -Inf; return(x)}}
+
+\item{within_hh_heterogeneity}{is a list with list names gamma, delta, and theta_bar. If a list element is true, within-hh-heterogeneity is allowed.}
 }
 \value{
 a list that includes the draws of household-related objects,taking into account the sick parameters and the distribution of coverage, the optimal insurance choice, the amount of oop, and the cost to the insurance company
