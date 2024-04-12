@@ -298,6 +298,8 @@ mat_M = do.call('rbind', lapply(data_hh_list[sample_r_theta], function(x) {
     return(cbind(x$M_expense, x$M_expense^2))
   }))
 
+mat_Y = do.call('c', lapply(data_hh_list[sample_r_theta], function(x) x$Income))
+
 full_insurance_indicator = do.call('c', lapply(data_hh_list[sample_r_theta], function(x) {
     return(x$HHsize_s[1] == x$N_vol[1])
   }))
@@ -348,10 +350,12 @@ estimate_r_thetabar = optimize(function(x) {
             Em = colMeans(apply(output_hh$m, 2, function(x) x * prob_full_insured))/sum(prob_full_insured)
             return(Em)
           }))
-        print(paste0('x = ',x))
+
+        output_2 = mean((output_2 * full_insurance_indicator - mat_M[,1] * full_insurance_indicator)^2 * mat_Y)
+        print(paste0('output_2 = ',output_2))
         print(paste0('optim_r')); print(optim_r$par)
         print('------')
-        return((mean(output_2 * full_insurance_indicator)/mean(full_insurance_indicator) - mean(mat_M[,1] * full_insurance_indicator)/mean(full_insurance_indicator))^2)
+        return(output_2)
       }, c(-3,3)) 
 
 param_trial[x_transform[[2]]$sigma_theta] <- estimate_r_thetabar$minimum

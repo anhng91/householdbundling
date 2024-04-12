@@ -510,11 +510,12 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 			}
 		}
 		 
-		s_theta = sqrt(1/(1 + exp(param$sigma_theta))) * exp(param$sigma_thetabar); 
+		s_thetabar = sqrt(1/(1 + exp(param$sigma_theta))) * exp(param$sigma_thetabar); 
+		s_theta = sqrt(exp(param$sigma_theta)/(1 + exp(param$sigma_theta))) * exp(param$sigma_thetabar);
 		theta_bar = matrix(NA, nrow = halton_mat %>% nrow, ncol = HHsize)
 
 		for (i in 1:HHsize) { 
-			theta_bar[, i] = halton_mat_list$individual_factor[,i] * s_theta + halton_mat_list$household_random_factor * (X_ind[i,] %*% param$beta_theta_ind) + t(c(X_ind[i,], data_hh_i$Year[i] == 2006, data_hh_i$Year[i] == 2008, data_hh_i$Year[i] == 2010, data_hh_i$Year[i] == 2012)) %*% param$beta_theta; 
+			theta_bar[, i] = halton_mat_list$individual_factor[,i] * s_thetabar + halton_mat_list$household_random_factor * (X_ind[i,] %*% param$beta_theta_ind) + t(c(X_ind[i,], data_hh_i$Year[i] == 2006, data_hh_i$Year[i] == 2008, data_hh_i$Year[i] == 2010, data_hh_i$Year[i] == 2012)) %*% param$beta_theta; 
 		}
 
 		beta_omega = X_hh %*% param$beta_omega 
