@@ -1127,7 +1127,6 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 
 	R_draw = list()
 
-	print(paste0('r = ', r))
 	if (data_hh_i$HHsize_s[1] == 0) {
 		R_draw[[1]] =  lapply(income_vec[1] - rowSums(theta_draw * kappa_draw[[1]]), function(x) max(x,0)) %>% unlist()		
 		m = colMeans(theta_draw * kappa_draw[[1]] * (1 + matrix(apply(theta_draw * kappa_draw[[1]], 2, function(x) x * R_draw[[1]]^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[1]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize)), na.rm=TRUE)
@@ -1203,9 +1202,6 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 			wtp = 0
 		} else {
 			init_val = -1e-1
-			print('fwtp')
-			print(f_wtp(0))
-			print(f_wtp(init_val))
 			wtp = uniroot(function(x) {
 				return(f_wtp(x) - unlist(U)[1])
 			}, c(0, init_val))$root
@@ -1238,7 +1234,6 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 	return(output)	
 }
 
-output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -10, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
 
 #' Function used in the constraint_function argument of counterfactual_household_draw_theta_kappa
 #'
