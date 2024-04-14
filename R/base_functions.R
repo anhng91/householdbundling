@@ -1106,10 +1106,13 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 	beta_r = X_hh %*% param$beta_r 
 	s_r = exp(param$sigma_r)
 	lower_threshold = pnorm(0, mean = beta_r, sd = s_r)
+
 	r = qnorm(lower_threshold * (1 - random_draw_here) + random_draw_here) * s_r + beta_r
-	if (is.infinite(r)) {
+	if (is.infinite(r) | r < 0) {
 		r = 0
 	}
+	
+	
 	
 	kappa_draw = list(); 
 
@@ -1137,7 +1140,6 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 
 	if (data_hh_i$HHsize_s[1] > 0) {
 		cara = function(x) {
-			print(summary(x))
 			if (r != 0) {
 				return(mean(-exp(-r * x), na.rm=TRUE))
 			} else {
@@ -1195,6 +1197,7 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 
 		f_wtp = function(wtp_) {
 			non_censored_r = income_vec[optimal_U_index] + wtp_ - rowSums(theta_draw * kappa_draw_ordered[[optimal_U_index]])
+			print(summary(non_censored_r))
 			r_draw_here = lapply(non_censored_r, function(x) max(x,0)) %>% unlist() 
 			return(cara((lapply(((r_draw_here)^(1 - omega) - 1)/(1 - omega), function(x) ifelse(is.infinite(x), 0, x)) %>% unlist()  - rowSums(matrix(t(apply(theta_draw, 1, function(x) x * delta)), ncol=HHsize) * matrix(t(apply(kappa_draw_ordered[[optimal_U_index]], 1, function(x) ((x + 1)^(1 - gamma) - 1)/(1 - gamma))), ncol=HHsize))) * ((r_draw_here) > 0) + (u_lowerbar + non_censored_r) * ((r_draw_here) == 0)))
 		}
@@ -1202,6 +1205,9 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 			wtp = 0
 		} else {
 			init_val = -1e-1
+			if (f_wtp(init_val) > unlist(U)[1]) {
+				init_val = -1
+			} 
 			wtp = uniroot(function(x) {
 				return(f_wtp(x) - unlist(U)[1])
 			}, c(0, init_val))$root

@@ -28,10 +28,16 @@ Vol_HH_list_index = lapply(1:length(data_hh_list), function(hh_index) {
 
 Vol_HH_list_index = Vol_HH_list_index[!(is.na(Vol_HH_list_index))] 
 
+if (Sys.info()[['sysname']] == 'Windows') {
+  numcores = 10; 
+  cl = makeCluster(numcores);
+  clusterEvalQ(cl, library('tidyverse'))
+  clusterEvalQ(cl, library('familyenrollment'))
+}
 
 if (Sys.info()[['sysname']] == 'Windows') {
   clusterExport(cl, c('transform_param_final', 'param','counterfactual_household_draw_theta_kappa_Rdraw'),envir=environment())
-  fit_values = parLapply(cl, Vol_HH_list_index[1:100], function(id) {
+  fit_values = parLapply(cl, Vol_HH_list_index, function(id) {
 	output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -10, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
 	output = as.data.frame(output)
 	output$Y = data_hh_list[[id]]$Income; 
@@ -39,7 +45,7 @@ if (Sys.info()[['sysname']] == 'Windows') {
 	return(output)
 	})
 } else {
-  fit_values = mclapply(Vol_HH_list_index[1:100], function(id) {
+  fit_values = mclapply(Vol_HH_list_index, function(id) {
 	output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -10, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
 	output = as.data.frame(output)
 	output$Y = data_hh_list[[id]]$Income; 
@@ -47,6 +53,9 @@ if (Sys.info()[['sysname']] == 'Windows') {
 	return(output)}, mc.cores=numcores)
 }
 
+# for (id in Vol_HH_list_index) {
+# 	output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -10, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
+# }
 
 fit_values = do.call('rbind', fit_values)
 

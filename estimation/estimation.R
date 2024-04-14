@@ -110,71 +110,71 @@ if (Sys.info()[['sysname']] == 'Windows') {
 }
 
 
-if (!(file.exists(paste0('../../householdbundling_estimate/estimate_',job_index,'.rds')))) {
-  estimate_theta_parameter = splitfngr::optim_share(rep(0, length(active_index)), function(x) {
-        x_new = param_trial; 
-        x_new[active_index] = x; 
-        x_transform = transform_param(x_new,return_index=TRUE); 
-        print('----------------');
-        print('x = '); print(x)
 
-        if (Sys.info()[['sysname']] == 'Windows') {
-          clusterExport(cl, 'x_transform',envir=environment())
-          theta_estimate_output = parLapply(cl, data_hh_list_theta,function(mini_data) {
-            output = tryCatch(identify_theta(data_set = mini_data, param=x_transform[[1]]),error=function(e) e)
-            return(output)
-          })
-        } else {
-          theta_estimate_output = mclapply(data_hh_list_theta, function(mini_data) tryCatch(identify_theta(data_set = mini_data, param=x_transform[[1]]), error=function(e) e), mc.cores=numcores)
-        }
+estimate_theta_parameter = splitfngr::optim_share(rep(0, length(active_index)), function(x) {
+      x_new = param_trial; 
+      x_new[active_index] = x; 
+      x_transform = transform_param(x_new,return_index=TRUE); 
+      print('----------------');
+      print('x = '); print(x)
 
-        result=list();
+      if (Sys.info()[['sysname']] == 'Windows') {
+        clusterExport(cl, 'x_transform',envir=environment())
+        theta_estimate_output = parLapply(cl, data_hh_list_theta,function(mini_data) {
+          output = tryCatch(identify_theta(data_set = mini_data, param=x_transform[[1]]),error=function(e) e)
+          return(output)
+        })
+      } else {
+        theta_estimate_output = mclapply(data_hh_list_theta, function(mini_data) tryCatch(identify_theta(data_set = mini_data, param=x_transform[[1]]), error=function(e) e), mc.cores=numcores)
+      }
 
-        result[[1]] = lapply(theta_estimate_output, function(x) x[[1]]) %>% unlist; 
-        if (any(!(is.numeric(result[[1]])))) {
-          return(list(NA, rep(NA, length(x))))
-        }
+      result=list();
 
-        na_index = which(is.na(result[[1]])) 
-        if (length(na_index) > 10) {
-          result[[1]] = NA;
-          result[[2]] = rep(NA, length(x)); 
-          return(result[1:2])
-        } else {
-          if (length(na_index) > 0) {
-            result[[1]] = sum(result[[1]][-na_index], na.rm=TRUE)
-          } else {
-            result[[1]] = sum(result[[1]], na.rm=TRUE)
-          }
-          
-        }
-        derivative= list()
-        result[[2]] = rep(0, length(param_trial)); 
-        
-        for (varname in var_list) {
-          if (length(na_index) == 0) {
-            derivative[[varname]] = Reduce('+', lapply(theta_estimate_output, function(x) x[[2]][[varname]]))
-          } else {
-            derivative[[varname]] = Reduce('+', lapply(theta_estimate_output[-na_index], function(x) x[[2]][[varname]]))
-          }
-          
-          result[[2]][c(x_transform[[2]][[varname]])] = derivative[[varname]]
-        }
+      result[[1]] = lapply(theta_estimate_output, function(x) x[[1]]) %>% unlist; 
+      if (any(!(is.numeric(result[[1]])))) {
+        return(list(NA, rep(NA, length(x))))
+      }
 
-        print(derivative)
-
-        result[[2]] = result[[2]][active_index]
-        if (any(is.infinite(result[[2]]))) {
-          inf_index = which(is.infinite(result[[2]])); 
-          result[[2]][inf_index] = sign(result[[2]][inf_index]) * 1e4;
-        }
-
-        print(result[[1]])
-        print(result[[2]])  
-      
+      na_index = which(is.na(result[[1]])) 
+      if (length(na_index) > 10) {
+        result[[1]] = NA;
+        result[[2]] = rep(NA, length(x)); 
         return(result[1:2])
-        # return(result[[1]])
-      }, control=list(maxit=1000), method='BFGS') 
+      } else {
+        if (length(na_index) > 0) {
+          result[[1]] = sum(result[[1]][-na_index], na.rm=TRUE)
+        } else {
+          result[[1]] = sum(result[[1]], na.rm=TRUE)
+        }
+        
+      }
+      derivative= list()
+      result[[2]] = rep(0, length(param_trial)); 
+      
+      for (varname in var_list) {
+        if (length(na_index) == 0) {
+          derivative[[varname]] = Reduce('+', lapply(theta_estimate_output, function(x) x[[2]][[varname]]))
+        } else {
+          derivative[[varname]] = Reduce('+', lapply(theta_estimate_output[-na_index], function(x) x[[2]][[varname]]))
+        }
+        
+        result[[2]][c(x_transform[[2]][[varname]])] = derivative[[varname]]
+      }
+
+      print(derivative)
+
+      result[[2]] = result[[2]][active_index]
+      if (any(is.infinite(result[[2]]))) {
+        inf_index = which(is.infinite(result[[2]])); 
+        result[[2]][inf_index] = sign(result[[2]][inf_index]) * 1e4;
+      }
+
+      print(result[[1]])
+      print(result[[2]])  
+    
+      return(result[1:2])
+      # return(result[[1]])
+    }, control=list(maxit=1000), method='BFGS') 
 
   param_trial[active_index] = estimate_theta_parameter$par
   transform_param_trial = transform_param(param_trial, return_index=TRUE)
@@ -283,10 +283,7 @@ if (!(file.exists(paste0('../../householdbundling_estimate/estimate_',job_index,
         param_trial[active_index] <<- estimate_pref_parameter$par
         return(estimate_pref_parameter$val) 
   }, control=list(maxit=1000), method='Nelder-Mead')
-} else {
-  param_final <- readRDS(paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
-  param_trial = param_final$other
-}
+
 
 x_transform = transform_param(param_trial, return_index=TRUE)
 
@@ -351,7 +348,7 @@ estimate_r_thetabar = optimize(function(x) {
             return(Em)
           }))
 
-        output_2 = mean((output_2 * full_insurance_indicator - mat_M[,1] * full_insurance_indicator)^2 * mat_Y)
+        output_2 = mean(((output_2 * full_insurance_indicator - mat_M[,1] * full_insurance_indicator)* mat_Y)^2)
         print(paste0('output_2 = ',output_2))
         print(paste0('optim_r')); print(optim_r$par)
         print('------')
