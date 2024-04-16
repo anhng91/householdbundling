@@ -621,8 +621,6 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 
 	return(output)	
 }
-clusterExport(cl,'household_draw_theta_kappa_Rdraw')
-household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], 100, 10, sick_parameters, xi_parameters, u_lowerbar = -10)
 
 
 #' Compute the matrix representing individual characteristics of a household.
