@@ -50,8 +50,6 @@ sample_identify_theta = full_index[which((lapply(full_index, function(sample_ind
       }
     }) %>% unlist()) == 1)]
 
-sample_identify_pref
-
 sample_no_sick = full_index[which((lapply(full_index, function(sample_index_i) {
       data_mini = data_hh_list[[sample_index_i]]
       if (((data_mini$HHsize_s[1] == 0) & (sum(data_mini$sick_dummy == 0)))) {
@@ -65,6 +63,7 @@ message('Identify the sample for preference')
 sample_identify_pref = lapply(Com_HH_list_index, function(x) ifelse(x %in% c(sample_identify_theta, sample_no_sick), NA, x)) %>% unlist()
 sample_identify_pref = sample_identify_pref[!(is.na(sample_identify_pref))]
 
+sample_identify_pref= sample(sample_identify_pref, 100)
 
 # Bootstrapping indices 
 message('bootstrapping indices')
