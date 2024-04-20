@@ -63,8 +63,6 @@ message('Identify the sample for preference')
 sample_identify_pref = lapply(Com_HH_list_index, function(x) ifelse(x %in% c(sample_identify_theta, sample_no_sick), NA, x)) %>% unlist()
 sample_identify_pref = sample_identify_pref[!(is.na(sample_identify_pref))]
 
-sample_identify_pref= sample(sample_identify_pref, 100)
-
 # Bootstrapping indices 
 message('bootstrapping indices')
 numcores = 2; 
