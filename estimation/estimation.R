@@ -96,7 +96,7 @@ message('Preparing data for estimation')
 data_hh_list_theta = list()
 for (index in 1:length(sample_identify_theta)) {
   message(paste0('constructing data for index', index))
-  data_hh_list_theta[[index]] = household_draw_theta_kappa_Rdraw(hh_index=sample_identify_theta[index], param=transform_param_trial[[1]], n_draw_halton = 1000, n_draw_gauss = 10, sick_parameters, xi_parameters)
+  data_hh_list_theta[[index]] = household_draw_theta_kappa_Rdraw(hh_index=sample_identify_theta[index], param=transform_param_trial[[1]], n_draw_halton = 1000, n_draw_gauss = 10, sick_parameters, xi_parameters, short=FALSE)
 }
 
 
@@ -178,6 +178,8 @@ estimate_theta_parameter = splitfngr::optim_share(rep(0, length(active_index)), 
   }, control=list(maxit=1000), method='BFGS') 
 
 param_trial[active_index] = estimate_theta_parameter$par
+param_trial[c(transform_param_trial[[2]]$sigma_delta, transform_param_trial[[2]]$sigma_gamma, transform_param_trial[[2]]$sigma_omega)] = -2; 
+
 transform_param_trial = transform_param(param_trial, return_index=TRUE)
 param_trial[tail(transform_param_trial[[2]][['beta_theta']], n=4)] = 0; 
 
@@ -189,11 +191,11 @@ if (Sys.info()[['sysname']] == 'Windows') {
 
 if (Sys.info()[['sysname']] == 'Windows') {
   data_hh_list_pref = parLapply(cl, sample_identify_pref,function(index) {
-    output = tryCatch(household_draw_theta_kappa_Rdraw(hh_index=index, param=transform_param_trial[[1]], n_draw_halton = n_draw_halton, n_draw_gauss = 10, sick_parameters, xi_parameters),error=function(e) e)
+    output = tryCatch(household_draw_theta_kappa_Rdraw(hh_index=index, param=transform_param_trial[[1]], n_draw_halton = n_draw_halton, n_draw_gauss = 10, sick_parameters, xi_parameters, short=FALSE),error=function(e) e)
     return(output)
   })
 } else {
-  data_hh_list_pref = mclapply(sample_identify_pref, function(index) tryCatch(household_draw_theta_kappa_Rdraw(hh_index=index, param=transform_param_trial[[1]], n_draw_halton = n_draw_halton, n_draw_gauss = 10, sick_parameters, xi_parameters), error=function(e) e), mc.cores=1)
+  data_hh_list_pref = mclapply(sample_identify_pref, function(index) tryCatch(household_draw_theta_kappa_Rdraw(hh_index=index, param=transform_param_trial[[1]], n_draw_halton = n_draw_halton, n_draw_gauss = 10, sick_parameters, xi_parameters, short=FALSE), error=function(e) e), mc.cores=1)
 }
 
 mat_M = do.call('rbind', lapply(data_hh_list_pref, function(x) {
@@ -215,7 +217,7 @@ large_estimate_pref_parameter = optim(rep(0, 4), function(y) {
   transform_param_trial = transform_param(param_trial, return_index=TRUE)
 
   if (Sys.info()[['sysname']] == 'Windows') {
-    clusterExport(cl, 'x_transform',envir=environment())
+    clusterExport(cl, 'transform_param_trial',envir=environment())
     data_hh_list_pref = parLapply(cl, sample_identify_pref,function(index) {
       output = tryCatch(household_draw_theta_kappa_Rdraw(hh_index=index, param=transform_param_trial[[1]], n_draw_halton = n_draw_halton, n_draw_gauss = 10, sick_parameters, xi_parameters, short=FALSE),error=function(e) e)
       return(output)
@@ -237,13 +239,12 @@ large_estimate_pref_parameter = optim(rep(0, 4), function(y) {
   message('Estimating preferences')
 
   clusterExport(cl, 'param_trial')
-  estimate_pref_parameter = splitfngr::optim_share(c(rep(-2, 3),rep(0, length(active_index) - 3)), function(x) {
+  print('y = '); print(y);
+  estimate_pref_parameter = splitfngr::optim_share(param_trial[active_index], function(x) {
       # optim_rf_trial = optim(trial_param[-zero_index], function(x) {
         x_new = param_trial; 
         x_new[active_index] = x; 
         x_transform = transform_param(x_new,return_index=TRUE); 
-        print('----------------');
-        print('x = '); print(x)
 
         if (max(abs(x)) > 10) {
           return(list(NA, rep(NA, length(x))))
@@ -301,11 +302,14 @@ large_estimate_pref_parameter = optim(rep(0, 4), function(y) {
         outer_output <<- sum(((output_1 - mat_M[,1]) %*% mat_Year)^2) * 1e4
 
         output[[2]] = output[[2]][active_index]
-        print(paste0('output is ', outer_output))
+        print('predicted m'); print(summary(output_1))
+        print('actual m'); print(summary(mat_M))
+        print(paste0('inner output is ', output[[1]]))
         return(output)
       }, control=list(maxit=1000), method='BFGS')
       
       param_trial[active_index] <<- estimate_pref_parameter$par
+      print('outer_output = '); print(outer_output)
       return(outer_output) 
 }, control=list(maxit=1000), method='BFGS')
 
@@ -326,6 +330,10 @@ full_insurance_indicator = do.call('c', lapply(data_hh_list[sample_r_theta], fun
     return(x$HHsize_s[1] == x$N_vol[1])
   }))
 
+full_insurance_indicator_ind_level = do.call('c', lapply(data_hh_list[sample_r_theta], function(x) {
+    return(rep(x$HHsize_s[1] == x$N_vol[1], x$HHsize[1]))
+  }))
+
 X_r_all = do.call('rbind', lapply(data_hh_list[sample_r_theta], function(x) var_hh(x)))
 
 save_obj_outside = NULL;
@@ -341,8 +349,8 @@ estimate_r_thetabar = optimize(function(x) {
 
         if (Sys.info()[['sysname']] == 'Windows') {
           clusterExport(cl, c('x_transform', 'sick_parameters', 'xi_parameters'),envir=environment())
-          moment_eligible_hh_output = parLapply(cl, sample_r_theta,function(mini_data_index) {
-            output = tryCatch(household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], 100, 10, sick_parameters, xi_parameters, u_lowerbar = -1),error=function(e) e)
+          moment_eligible_hh_output = parLapply(cl, sample_r_theta, function(mini_data_index) {
+            output = (household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], 100, 10, sick_parameters, xi_parameters, u_lowerbar = -1))
             return(output)
           })
         } else {
@@ -353,6 +361,9 @@ estimate_r_thetabar = optimize(function(x) {
 
         save_obj_outside <<- moment_eligible_hh_output
         fx_r = function(x_r) {
+          if (max(abs(x_r)) > 10) {
+            return(list(NA, rep(NA, length(x_r))))
+          }
           output = lapply(moment_eligible_hh_output, function(output_hh) {
             output_hh$root_r = lapply(output_hh$root_r, function(tinyx) ifelse(is.infinite(tinyx), 100, tinyx)) %>% unlist()
             top = (1 - pnorm(output_hh$root_r, mean = output_hh$X_hh %*% x_r[-length(x_r)], sd = exp(x_r[length(x_r)])));
@@ -401,12 +412,12 @@ estimate_r_thetabar = optimize(function(x) {
 
         output_2 = do.call('c', lapply(moment_eligible_hh_output, function(output_hh) {
             prob_full_insured = (1 - pnorm(output_hh$root_r, mean = output_hh$X_hh %*% x_transform[[1]]$beta_r, sd = exp(x_transform[[1]]$sigma_r)))/(1 - pnorm(0, mean = output_hh$X_hh %*% x_transform[[1]]$beta_r, sd = exp(x_transform[[1]]$sigma_r)))
-            Em = colMeans(apply(output_hh$m, 2, function(x) x * prob_full_insured))/sum(prob_full_insured)
+            Em = colMeans(apply(output_hh$m, 2, function(x) x * prob_full_insured))
             return(Em)
           }))
 
-        print(output_2[which(full_insurance_indicator)] %>% summary)
-        output_2 = mean((((output_2 + 1e-5) * full_insurance_indicator - (mat_M[,1] + 1e-5) * full_insurance_indicator))^2) * 1e4
+        print(output_2[which(full_insurance_indicator_ind_level)] %>% summary)
+        output_2 = mean(((output_2 - mat_M[,1] * full_insurance_indicator_ind_level))^2, na.rm=TRUE) * 1e4
         print(paste0('output_2 = ',output_2))
         
         print(mat_M[which(full_insurance_indicator),1] %>% summary)
