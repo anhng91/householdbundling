@@ -50,6 +50,8 @@ sample_identify_theta = full_index[which((lapply(full_index, function(sample_ind
       }
     }) %>% unlist()) == 1)]
 
+sample_identify_pref
+
 sample_no_sick = full_index[which((lapply(full_index, function(sample_index_i) {
       data_mini = data_hh_list[[sample_index_i]]
       if (((data_mini$HHsize_s[1] == 0) & (sum(data_mini$sick_dummy == 0)))) {
@@ -180,31 +182,54 @@ param_trial[active_index] = estimate_theta_parameter$par
 transform_param_trial = transform_param(param_trial, return_index=TRUE)
 param_trial[tail(transform_param_trial[[2]][['beta_theta']], n=4)] = 0; 
 
-
+n_draw_halton = 1000; 
 if (Sys.info()[['sysname']] == 'Windows') {
-  clusterExport(cl, c('active_index', 'param_trial', 'transform_param_trial', 'sample_identify_pref'))
+  clusterExport(cl, c('active_index', 'param_trial', 'transform_param_trial', 'sample_identify_pref', 'xi_parameters', 'sick_parameters'))
+  clusterExport(cl,'n_draw_halton')
 }
 
+if (Sys.info()[['sysname']] == 'Windows') {
+  data_hh_list_pref = parLapply(cl, sample_identify_pref,function(index) {
+    output = tryCatch(household_draw_theta_kappa_Rdraw(hh_index=index, param=transform_param_trial[[1]], n_draw_halton = n_draw_halton, n_draw_gauss = 10, sick_parameters, xi_parameters),error=function(e) e)
+    return(output)
+  })
+} else {
+  data_hh_list_pref = mclapply(sample_identify_pref, function(index) tryCatch(household_draw_theta_kappa_Rdraw(hh_index=index, param=transform_param_trial[[1]], n_draw_halton = n_draw_halton, n_draw_gauss = 10, sick_parameters, xi_parameters), error=function(e) e), mc.cores=1)
+}
+
+mat_M = do.call('rbind', lapply(data_hh_list_pref, function(x) {
+      return(cbind(x$data$M_expense, x$data$M_expense^2))
+    }))
+
+mat_Year = do.call('rbind', lapply(data_hh_list_pref, function(x) {
+      return(cbind(x$data$Year == 2004, x$data$Year == 2006, x$data$Year == 2010, x$data$Year == 2012))
+    }))
+outer_output = 0; 
+
 large_estimate_pref_parameter = optim(rep(0, 4), function(y) {
+  if (max(abs(y)) > 5) {
+    return(NA)
+  }
   message('Preparing data for estimation of preference')
   data_hh_list_pref = list()
   param_trial[tail(transform_param_trial[[2]][['beta_theta']], n=4)] <<- y; 
   transform_param_trial = transform_param(param_trial, return_index=TRUE)
 
-  for (index in 1:length(sample_identify_pref)) {
-    message(paste0('constructing data for index', index))
-    data_hh_list_pref[[index]] = household_draw_theta_kappa_Rdraw(hh_index=sample_identify_pref[index], param=transform_param_trial[[1]], n_draw_halton = 1000, n_draw_gauss = 10, sick_parameters, xi_parameters)
+  if (Sys.info()[['sysname']] == 'Windows') {
+    clusterExport(cl, 'x_transform',envir=environment())
+    data_hh_list_pref = parLapply(cl, sample_identify_pref,function(index) {
+      output = tryCatch(household_draw_theta_kappa_Rdraw(hh_index=index, param=transform_param_trial[[1]], n_draw_halton = n_draw_halton, n_draw_gauss = 10, sick_parameters, xi_parameters, short=FALSE),error=function(e) e)
+      return(output)
+    })
+  } else {
+    data_hh_list_pref = mclapply(sample_identify_pref, function(index) tryCatch(household_draw_theta_kappa_Rdraw(hh_index=index, param=transform_param_trial[[1]], n_draw_halton = n_draw_halton, n_draw_gauss = 10, sick_parameters, xi_parameters, short=FALSE), error=function(e) e), mc.cores=1)
   }
 
   message('Constructing additional moments')
   mat_YK = do.call('cbind', lapply(data_hh_list_pref, function(x) {
-          output = rbind(colMeans(matrix(x$kappa_draw[[1]], nrow=1000)), colMeans(matrix(x$kappa_draw[[1]]^2, nrow=1000)), x$income[1], x$income[1]^2, colMeans(matrix(x$kappa_draw[[1]], nrow=1000))*x$income[1])
+          output = rbind(colMeans(matrix(x$kappa_draw[[1]], nrow=n_draw_halton)), colMeans(matrix(x$kappa_draw[[1]]^2, nrow=n_draw_halton)), x$income[1], x$income[1]^2, colMeans(matrix(x$kappa_draw[[1]], nrow=n_draw_halton))*x$income[1])
           return(output)
         }))
-
-  mat_M = do.call('rbind', lapply(data_hh_list_pref, function(x) {
-      return(cbind(x$data$M_expense, x$data$M_expense^2))
-    }))
 
   var_list = c('sigma_delta','sigma_omega', 'sigma_gamma','beta_delta','beta_omega','beta_gamma')
 
@@ -212,11 +237,8 @@ large_estimate_pref_parameter = optim(rep(0, 4), function(y) {
 
   message('Estimating preferences')
 
-  if (Sys.info()[['sysname']] == 'Windows') {
-    clusterExport(cl, c('param_trial'))
-  }
-
-  estimate_pref_parameter = splitfngr::optim_share(param_trial[active_index], function(x) {
+  clusterExport(cl, 'param_trial')
+  estimate_pref_parameter = splitfngr::optim_share(c(rep(-2, 3),rep(0, length(active_index) - 3)), function(x) {
       # optim_rf_trial = optim(trial_param[-zero_index], function(x) {
         x_new = param_trial; 
         x_new[active_index] = x; 
@@ -224,7 +246,9 @@ large_estimate_pref_parameter = optim(rep(0, 4), function(y) {
         print('----------------');
         print('x = '); print(x)
 
-
+        if (max(abs(x)) > 10) {
+          return(list(NA, rep(NA, length(x))))
+        } 
         if (Sys.info()[['sysname']] == 'Windows') {
           clusterExport(cl, 'x_transform',envir=environment())
           moment_ineligible_hh_output = parLapply(cl, data_hh_list_pref,function(mini_data) {
@@ -275,14 +299,16 @@ large_estimate_pref_parameter = optim(rep(0, 4), function(y) {
         output[[2]][x_transform[[2]][['sigma_gamma']]] =  sum((d_output_1[['sigma_gamma']] %*% d_moment[,1:5])/length(x)) + sum((d_output_2[['sigma_gamma']] %*% d_moment[,6:10])/length(x))
         output[[2]][x_transform[[2]][['sigma_omega']]] =  sum((d_output_1[['sigma_omega']] %*% d_moment[,1:5])/length(x)) + sum((d_output_2[['sigma_omega']] %*% d_moment[,6:10])/length(x))
 
+        outer_output <<- sum(((output_1 - mat_M[,1]) %*% mat_Year)^2) * 1e4
 
         output[[2]] = output[[2]][active_index]
-        print(paste0('output is ', output[[1]]))
+        print(paste0('output is ', outer_output))
         return(output)
       }, control=list(maxit=1000), method='BFGS')
+      
       param_trial[active_index] <<- estimate_pref_parameter$par
-      return(estimate_pref_parameter$val) 
-}, control=list(maxit=1000), method='Nelder-Mead')
+      return(outer_output) 
+}, control=list(maxit=1000), method='BFGS')
 
 
 x_transform = transform_param(param_trial, return_index=TRUE)
@@ -353,6 +379,7 @@ estimate_r_thetabar = optimize(function(x) {
           d_output_1[length(x_r)] = d_output_1[length(x_r)] * exp(x_r[length(x_r)])
 
           output = -sum(full_insurance_indicator * log(output_1) + (1 - full_insurance_indicator) * log(1 - output_1)) 
+          print(paste0('output = '))
 
           d_output = -colSums(full_insurance_indicator/output_1*d_output_1 + (1 - full_insurance_indicator)/(1 - output_1)*(-1)*d_output_1) 
           return(list(output, d_output))

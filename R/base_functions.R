@@ -419,6 +419,7 @@ all_insurance = function(vec_) {
 #' @param u_lowerbar value of utility when income constraint is violated
 #' @param sick_parameters a list produced from optim 
 #' @param xi_parameters a list produced from optim
+#' @param short if TRUE, does not return dataframe of the original data
 #'
 #' @return a list that includes the draws of household-related objects,taking into account the sick parameters and the distribution of coverage. This does not take into account estimated preference parameters or unconditional distribution of health shocks. See `compute_expected_U_m` for the draws post-estimation of preference parameters and health shocks distribution.
 #' 
@@ -427,7 +428,7 @@ all_insurance = function(vec_) {
 #' @examples
 #' household_draw_theta_kappa_Rdraw(1, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample)
 #' 
-household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 1000, n_draw_gauss = 10, sick_parameters, xi_parameters, u_lowerbar = -10) {
+household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 1000, n_draw_gauss = 10, sick_parameters, xi_parameters, u_lowerbar = -10, short=TRUE) {
 	set.seed(1);
 	data_hh_i = data_hh_list[[hh_index]]; 
 	HHsize = nrow(data_hh_i);
@@ -472,7 +473,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 	
 	for (i in 1:HHsize) {
 		if (data_hh_i$HHsize_s[1] == 0) {
-			common_household_factor[,i] = halton_mat_list$household_random_factor * (X_ind[i,] %*% param$beta_theta_ind) + t(c(X_ind[i,], data_hh_i$Year[i] == 2006, data_hh_i$Year[i] == 2008, data_hh_i$Year[i] == 2010, data_hh_i$Year[i] == 2012)) %*% param$beta_theta
+			common_household_factor[,i] = halton_mat_list$household_random_factor * (X_ind[i,] %*% param$beta_theta_ind) + t(c(X_ind[i,], data_hh_i$Year[i] == 2004, data_hh_i$Year[i] == 2006, data_hh_i$Year[i] == 2010, data_hh_i$Year[i] == 2012)) %*% param$beta_theta
 			theta_draw[,i] = exp(common_household_factor[,i] + halton_mat_list$individual_factor[,i] * exp(param$sigma_thetabar)) * halton_mat_list$sick[,i]
 			
 			random_xi_draws = lapply(halton_mat_list$coverage[,i], function(x) ifelse(x <= p_0[i], 0, ifelse(x <= p_0[i] + p_1[i], 1, (x - p_0[i] - p_1[i])/(1 - p_0[i] - p_1[i])))) %>% unlist()
@@ -515,7 +516,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 		theta_bar = matrix(NA, nrow = halton_mat %>% nrow, ncol = HHsize)
 
 		for (i in 1:HHsize) { 
-			theta_bar[, i] = halton_mat_list$individual_factor[,i] * s_thetabar + halton_mat_list$household_random_factor * (X_ind[i,] %*% param$beta_theta_ind) + t(c(X_ind[i,], data_hh_i$Year[i] == 2006, data_hh_i$Year[i] == 2008, data_hh_i$Year[i] == 2010, data_hh_i$Year[i] == 2012)) %*% param$beta_theta; 
+			theta_bar[, i] = halton_mat_list$individual_factor[,i] * s_thetabar + halton_mat_list$household_random_factor * (X_ind[i,] %*% param$beta_theta_ind) + t(c(X_ind[i,], data_hh_i$Year[i] == 2004, data_hh_i$Year[i] == 2006, data_hh_i$Year[i] == 2010, data_hh_i$Year[i] == 2012)) %*% param$beta_theta; 
 		}
 
 		beta_omega = X_hh %*% param$beta_omega 
@@ -610,12 +611,14 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 		output$kappa_draw = kappa_draw; 
 		output$theta_draw = theta_draw;
 		output$index = hh_index
-		output$data = data_hh_i
-		output$policy_mat = policy_mat[[hh_index]]
 		output$income = Income_net_premium[[hh_index]]
-		output$X_ind = var_ind(data_hh_i)
-		output$X_hh = var_hh(data_hh_i)
-		output$sick_p = c(1/(1 + exp(output$X_ind %*% sick_parameters$par)))
+		if (!(short)){
+			output$data = data_hh_i
+			output$policy_mat = policy_mat[[hh_index]]
+			output$X_ind = var_ind(data_hh_i)
+			output$X_hh = var_hh(data_hh_i)
+			output$sick_p = c(1/(1 + exp(output$X_ind %*% sick_parameters$par)))
+		}	
 	}
 
 
@@ -1025,7 +1028,7 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 
 	for (i in 1:HHsize) { 
 		random_draw_here = rnorm(1)
-		theta_bar[i] = random_draw_here * s_thetabar + random_hh_factor * (X_ind[i,] %*% param$beta_theta_ind) + t(c(X_ind[i,], data_hh_i$Year[i] == 2006, data_hh_i$Year[i] == 2008, data_hh_i$Year[i] == 2010, data_hh_i$Year[i] == 2012)) %*% param$beta_theta; 
+		theta_bar[i] = random_draw_here * s_thetabar + random_hh_factor * (X_ind[i,] %*% param$beta_theta_ind) + t(c(X_ind[i,], data_hh_i$Year[i] == 2004, data_hh_i$Year[i] == 2006, data_hh_i$Year[i] == 2010, data_hh_i$Year[i] == 2012)) %*% param$beta_theta; 
 	}
 
 	beta_omega = X_hh %*% param$beta_omega 
