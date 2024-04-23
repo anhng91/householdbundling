@@ -240,7 +240,7 @@ second_taylor_CARA_test = function(a, b, mu, sigma) {
 #' @export
 #'
 #' @examples
-#' mini_data = household_draw_theta_kappa_Rdraw(3, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample);
+#' mini_data = household_draw_theta_kappa_Rdraw(3, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample, short=FALSE);
 #' moment_ineligible_hh(mini_data, sample_data_and_parameter$param)
 #' 
 #' 
@@ -420,6 +420,7 @@ all_insurance = function(vec_) {
 #' @param sick_parameters a list produced from optim 
 #' @param xi_parameters a list produced from optim
 #' @param short if TRUE, does not return dataframe of the original data
+#' @param relevant_index relevant index to compute m and r threshold, default to all halton draws. 
 #'
 #' @return a list that includes the draws of household-related objects,taking into account the sick parameters and the distribution of coverage. This does not take into account estimated preference parameters or unconditional distribution of health shocks. See `compute_expected_U_m` for the draws post-estimation of preference parameters and health shocks distribution.
 #' 
@@ -428,7 +429,7 @@ all_insurance = function(vec_) {
 #' @examples
 #' household_draw_theta_kappa_Rdraw(1, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample)
 #' 
-household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 1000, n_draw_gauss = 10, sick_parameters, xi_parameters, u_lowerbar = -10, short=TRUE) {
+household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 1000, n_draw_gauss = 10, sick_parameters, xi_parameters, u_lowerbar = -10, short=TRUE, relevant_index = c(1:n_draw_halton)) {
 	set.seed(1);
 	data_hh_i = data_hh_list[[hh_index]]; 
 	HHsize = nrow(data_hh_i);
@@ -511,8 +512,11 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 			}
 		}
 		 
-		s_thetabar = sqrt(1/(1 + exp(param$sigma_theta))) * exp(param$sigma_thetabar); 
-		s_theta = sqrt(exp(param$sigma_theta)/(1 + exp(param$sigma_theta))) * exp(param$sigma_thetabar);
+		# s_thetabar = sqrt(1/(1 + exp(param$sigma_theta))) * exp(param$sigma_thetabar); 
+		# s_theta = sqrt(exp(param$sigma_theta)/(1 + exp(param$sigma_theta))) * exp(param$sigma_thetabar);
+		s_thetabar = exp(param$sigma_thetabar) - param$sigma_theta; 
+		s_theta = param$sigma_theta; 
+		
 		theta_bar = matrix(NA, nrow = halton_mat %>% nrow, ncol = HHsize)
 
 		for (i in 1:HHsize) { 
@@ -529,9 +533,9 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 		}
 		prob_full_insured = NULL
 
-		root_r_vec = NULL 
+		root_r_vec = rep(Inf, n_draw_halton) 
 		
-		m = matrix(NA, nrow = nrow(halton_mat), ncol = HHsize)
+		m = matrix(0, nrow = nrow(halton_mat), ncol = HHsize)
 
 		random_xi_draws = matrix(NA, nrow = halton_mat %>% nrow, ncol = HHsize)
 
@@ -539,7 +543,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 			random_xi_draws[,i] = lapply(halton_mat_list$coverage[,i], function(x) ifelse(x <= p_0[i], 0, ifelse(x <= p_0[i] + p_1[i], 1, (x - p_0[i] - p_1[i])/(1 - p_0[i] - p_1[i])))) %>% unlist()
 		}
 
-		for (j in 1:nrow(halton_mat)) {
+		for (j in relevant_index) {
 			# Full insurance: 
 			theta_draw = matrix(t(apply(halton_mat_list$theta, 1, function(x) exp(x * s_theta + theta_bar[j,]))), ncol=HHsize) * halton_mat_list$sick
 

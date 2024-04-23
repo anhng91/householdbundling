@@ -18,7 +18,7 @@ a list. The first element is the expected value of m|Y,k. The second element is 
 Compute the moments of ineligible households
 }
 \examples{
-mini_data = household_draw_theta_kappa_Rdraw(3, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample);
+mini_data = household_draw_theta_kappa_Rdraw(3, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample, short=FALSE);
 moment_ineligible_hh(mini_data, sample_data_and_parameter$param)
 
 

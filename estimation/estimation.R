@@ -310,8 +310,7 @@ large_estimate_pref_parameter = optim(rep(0, 4), function(y) {
       print('outer_output = '); print(outer_output)
       return(outer_output) 
 }, control=list(maxit=1000), method='BFGS')
-
-
+ 
 x_transform = transform_param(param_trial, return_index=TRUE)
 
 active_index = c(x_transform[[2]]$sigma_r,  x_transform[[2]]$sigma_theta, x_transform[[2]]$beta_r); 
@@ -336,73 +335,122 @@ X_r_all = do.call('rbind', lapply(data_hh_list[sample_r_theta], function(x) var_
 
 save_obj_outside = NULL;
 save_param_outside = NULL; 
+
+
+# some draws will be insensitive to values of sigma_thetabar, so we do not need to simulate over these draws multiple times. 
+x_new = param_trial; 
+x_new[x_transform[[2]]$sigma_theta] = 5;
+x_transform = transform_param(x_new, return_index=TRUE)
+n_halton_at_r = 300; 
+if (Sys.info()[['sysname']] == 'Windows') {
+  x_new = param_trial; 
+  x_new[x_transform[[2]]$sigma_theta] = 5;
+  x_transform = transform_param(x_new, return_index=TRUE)
+  clusterExport(cl, c('x_transform', 'sick_parameters', 'xi_parameters', 'n_halton_at_r'))
+  moment_eligible_hh_output_upper = parLapply(cl, sample_r_theta, function(mini_data_index) {
+    output = (household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], n_halton_at_r, 10, sick_parameters, xi_parameters, u_lowerbar = -1))
+    return(output)
+  })
+} else {
+  moment_eligible_hh_output_upper = mclapply(sample_r_theta, function(mini_data_index) tryCatch(household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], n_halton_at_r, 10, sick_parameters, xi_parameters, u_lowerbar = -1), error=function(e) e), mc.cores=numcores)
+}
+
+x_new = param_trial; 
+x_new[x_transform[[2]]$sigma_theta] = -5;
+x_transform = transform_param(x_new, return_index=TRUE)
+if (Sys.info()[['sysname']] == 'Windows') {
+  clusterExport(cl, c('x_transform', 'sick_parameters', 'xi_parameters', 'n_halton_at_r'))
+  moment_eligible_hh_output_lower = parLapply(cl, sample_r_theta, function(mini_data_index) {
+    output = (household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], n_halton_at_r, 10, sick_parameters, xi_parameters, u_lowerbar = -1))
+    return(output)
+  })
+} else {
+  moment_eligible_hh_output_lower = mclapply(sample_r_theta, function(mini_data_index) tryCatch(household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], n_halton_at_r, 10, sick_parameters, xi_parameters, u_lowerbar = -1), error=function(e) e), mc.cores=numcores)
+}
+
+
+relevant_index = lapply(1:length(sample_r_theta), function(index) {
+  output = list();
+  output[[1]] = sample_r_theta[index]
+  output[[2]] = which(!(is.infinite(moment_eligible_hh_output_lower[[index]]$root_r)) | !(is.infinite(moment_eligible_hh_output_upper[[index]]$root_r)))
+  return(output)    
+})
+
+relevant_index_na = lapply(1:length(relevant_index), function(id) ifelse(length(relevant_index[[id]][[2]]) > 0, id, NA)) %>% unlist()
+relevant_index_nona = relevant_index[which(!(is.na(relevant_index_na)))]
+full_insurance_indicator_nona = full_insurance_indicator[which(!(is.na(relevant_index_na)))]
+
+full_insurance_indicator_ind_level_nona = do.call('c', lapply(data_hh_list[sample_r_theta[which(!(is.na(relevant_index_na)))]], function(x) {
+    return(rep(x$HHsize_s[1] == x$N_vol[1], x$HHsize[1]))
+  }))
+
+mat_M = do.call('rbind', lapply(data_hh_list[sample_r_theta[which(!(is.na(relevant_index_na)))]], function(x) {
+    return(cbind(x$M_expense, x$M_expense^2))
+  }))
+
 estimate_r_thetabar = optimize(function(x) {
       # optim_rf_trial = optim(trial_paraam[-zero_index], function(x) {
         x_new = param_trial; 
         x_new[x_transform[[2]]$sigma_theta] = x; 
-        x_transform = transform_param(x_new,return_index=TRUE); 
+        x_transform = transform_param(x_new, return_index=TRUE)
         print('----------------');
         print('x = '); print(x_transform[[1]])
 
 
         if (Sys.info()[['sysname']] == 'Windows') {
           clusterExport(cl, c('x_transform', 'sick_parameters', 'xi_parameters'),envir=environment())
-          moment_eligible_hh_output = parLapply(cl, sample_r_theta, function(mini_data_index) {
-            output = (household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], 100, 10, sick_parameters, xi_parameters, u_lowerbar = -1))
+          moment_eligible_hh_output = parLapply(cl, relevant_index_nona, function(mini_data_index) {
+            output = (household_draw_theta_kappa_Rdraw(mini_data_index[[1]], x_transform[[1]], n_halton_at_r, 10, sick_parameters, xi_parameters, u_lowerbar = -1, relevant_index = mini_data_index[[2]]))
             return(output)
           })
         } else {
-          moment_eligible_hh_output = mclapply(sample_r_theta, function(mini_data_index) tryCatch(household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], 100, 10, sick_parameters, xi_parameters, u_lowerbar = -1), error=function(e) e), mc.cores=numcores)
+          moment_eligible_hh_output = mclapply(relevant_index_nona, function(mini_data_index) tryCatch(household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], n_halton_at_r, 10, sick_parameters, xi_parameters, u_lowerbar = -1), error=function(e) e), mc.cores=numcores)
         }
 
         save_param_outside <<- x_transform[[1]]
 
         save_obj_outside <<- moment_eligible_hh_output
-        fx_r = function(x_r) {
-          if (max(abs(x_r)) > 10) {
-            return(list(NA, rep(NA, length(x_r))))
+
+
+        root_r = do.call('c',lapply(moment_eligible_hh_output, function(output_hh) output_hh$root_r))
+        X_hh_all = do.call('rbind',lapply(moment_eligible_hh_output, function(output_hh) output_hh$X_hh))
+
+        fx_r = function(x_r, derivative=FALSE) {
+          mean_vec = rep(X_hh_all %*% x_r[-length(x_r)], each = n_halton_at_r)
+          sd = exp(x_r[length(x_r)])
+          prob = pnorm(root_r, mean = mean_vec, sd = sd)
+          prob_0 = pnorm(0, mean = mean_vec, sd = sd)
+          if (derivative) {
+            dprob = dnorm((root_r-mean_vec)/sd);
+            dprob_0 = dnorm((0-mean_vec)/sd);
+            d_prob_mean = apply(X_hh_all,2, function(x) x * dprob*(-1)) ;
+            d_prob_sd = dprob *(-1)/sd^2; 
+            d_prob_0_mean = apply(X_hh_all,2, function(x) x * dprob_0)*(-1) ;
+            d_prob_0_sd = dprob_0*(-1)/sd^2; 
+            d_output_mean = do.call('c', lapply(1:ncol(d_prob_mean), function(id_col) mean(matrix(((-d_prob_mean[,id_col])*(1 - prob_0) + d_prob_0_mean[,id_col]*(1 - prob))/(1 - prob_0)^2, nrow=n_halton_at_r) %>% colMeans * (full_insurance_indicator_nona - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r) %>% colMeans)))))
+            d_output_sd = mean(matrix(((-d_prob_sd)*(1 - prob_0) + d_prob_0_sd*(1 - prob))/(1 - prob_0)^2, nrow=n_halton_at_r) %>% colMeans * (full_insurance_indicator_nona - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r) %>% colMeans)))
           }
-          output = lapply(moment_eligible_hh_output, function(output_hh) {
-            output_hh$root_r = lapply(output_hh$root_r, function(tinyx) ifelse(is.infinite(tinyx), 100, tinyx)) %>% unlist()
-            top = (1 - pnorm(output_hh$root_r, mean = output_hh$X_hh %*% x_r[-length(x_r)], sd = exp(x_r[length(x_r)])));
-            bottom = 1 - pnorm(0, mean = output_hh$X_hh %*% x_r[-length(x_r)], sd = exp(x_r[length(x_r)]))
-            d_top = list()
-            val_1 = dnorm(output_hh$root_r, mean = output_hh$X_hh %*% x_r[-length(x_r)], sd = exp(x_r[length(x_r)]))
-            d_top$mu = (- val_1 * (-1/exp(x_r[length(x_r)]))) %*% output_hh$X_hh
-            d_top$sigma = (- val_1) * (-1/exp(x_r[length(x_r)]) + (-1) * exp(-2 * x_r[length(x_r)]));
-            val_2 = dnorm(0, mean = output_hh$X_hh %*% x_r[-length(x_r)], sd = exp(x_r[length(x_r)]))
-            d_bottom = list()
-            d_bottom$mu = (- val_2 * (-1/exp(x_r[length(x_r)]))) %*% output_hh$X_hh
-            d_bottom$sigma = (- val_2) * (-1/exp(x_r[length(x_r)]) + (-1) * exp(-2 * x_r[length(x_r)]));
-
-            prob_full_insured = mean(top)/bottom
-            deriv = colMeans(d_top$mu/bottom - top %*% d_bottom$mu/bottom^2)
-            deriv = c(deriv,mean(d_top$sigma/bottom - mean(top*d_bottom$sigma/bottom^2)))
-            return(list(prob_full_insured, deriv))
-          })
-  
-          output_1 = lapply(output, function(x_) ifelse(x_[[1]] == 0, x_[[1]] + 1e-10, ifelse(x_[[1]] == 1, 1 - 1e-10, x_[[1]]))) %>% unlist()
-          print(summary(output_1))
-          d_output_1 = do.call('rbind', lapply(output, function(x_) x_[[2]]))
-          d_output_1[length(x_r)] = d_output_1[length(x_r)] * exp(x_r[length(x_r)])
-
-          output = -sum(full_insurance_indicator * log(output_1) + (1 - full_insurance_indicator) * log(1 - output_1)) 
-          print(paste0('output = '))
-
-          d_output = -colSums(full_insurance_indicator/output_1*d_output_1 + (1 - full_insurance_indicator)/(1 - output_1)*(-1)*d_output_1) 
-          return(list(output, d_output))
+          
+          # output = -mean(full_insurance_indicator_nona * log(matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r) %>% colMeans + 1e-5) + (1 - full_insurance_indicator_nona) * log((1 - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r) %>% colMeans)) + 1e-5))
+          output = mean(full_insurance_indicator_nona - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r) %>% colMeans))^2
+        
+          print('x_r = '); print(x_r);
+          print('output = '); print(output);
+          if (derivative) {
+            return(list(output, c(- d_output_mean, - d_output_sd * sd)))
+          } else{
+            if (is.nan(output) | is.infinite(output)) {
+              return(NA)
+            }
+            else {
+              return(output)
+            }
+          }
         }
 
-        # x_r = rep(0, length(c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r)))
-        # f0 = fx_r(x_r)
-        # f1 = NULL
-        # for (id in c(1:length(x_r))) {
-        #   x_r1 = x_r; 
-        #   x_r1[id] = x_r[id] + 1e-1; 
-        #   print(paste0('numerical value = ', (fx_r(x_r1)[[1]] - f0[[1]])/1e-1, ' analytical value = ', f0[[2]][id]));
-        # }
+        # optim_r = splitfngr::optim_share(rep(0, length(param_trial[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r)])), function(x) fx_r(x, derivative=TRUE), control=list(maxit=1000), method='BFGS') 
 
-        optim_r = splitfngr::optim_share(rep(0, length(c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r))), fx_r, control=list(maxit=1000), method='BFGS') 
+        optim_r = optim(c(rep(0,7),2), fx_r, control=list(maxit=1000), method='BFGS') 
 
         param_trial[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r)] <<- optim_r$par
         param_trial[x_transform[[2]]$sigma_theta] <<- x; 
@@ -414,15 +462,15 @@ estimate_r_thetabar = optimize(function(x) {
             return(Em)
           }))
 
-        print(output_2[which(full_insurance_indicator_ind_level)] %>% summary)
-        output_2 = mean(((output_2 - mat_M[,1] * full_insurance_indicator_ind_level))^2, na.rm=TRUE) * 1e4
+        print(output_2 %>% summary)
+        output_2 = mean(((output_2 - mat_M[,1] * full_insurance_indicator_ind_level_nona))^2, na.rm=TRUE) * 1e4
         print(paste0('output_2 = ',output_2))
         
-        print(mat_M[which(full_insurance_indicator),1] %>% summary)
+        print((mat_M[,1] * full_insurance_indicator_ind_level_nona)%>% summary)
         print(paste0('optim_r')); print(optim_r$par)
         print('------')
         return(output_2)
-      }, c(-10,10)) 
+      }, c(0,exp(x_transform[[1]]$sigma_thetabar))) 
 
 param_trial[x_transform[[2]]$sigma_theta] <- estimate_r_thetabar$minimum
 param_final = list(); 
