@@ -516,7 +516,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 		# s_theta = sqrt(exp(param$sigma_theta)/(1 + exp(param$sigma_theta))) * exp(param$sigma_thetabar);
 		s_thetabar = exp(param$sigma_thetabar) - param$sigma_theta; 
 		s_theta = param$sigma_theta; 
-		
+
 		theta_bar = matrix(NA, nrow = halton_mat %>% nrow, ncol = HHsize)
 
 		for (i in 1:HHsize) { 
@@ -813,7 +813,7 @@ identify_theta = function(data_set, param) {
 	sick_p = data_set$sick_p;
 
 	HHsize = data_hh_i$HHsize[1]
-	mean_beta_theta = c(cbind(X_ind, data_hh_i$Year == 2006, data_hh_i$Year == 2008, data_hh_i$Year == 2010, data_hh_i$Year == 2012) %*% param$beta_theta);
+	mean_beta_theta = c(cbind(X_ind, data_hh_i$Year == 2004, data_hh_i$Year == 2006, data_hh_i$Year == 2010, data_hh_i$Year == 2012) %*% param$beta_theta);
 	mean_beta_theta_ind = c(X_ind %*% param$beta_theta_ind);
 
 	mean_beta_omega = X_hh %*% param$beta_omega; 
@@ -897,7 +897,7 @@ identify_theta = function(data_set, param) {
 	
 	derivative_param = list()
 	start=1; end = start;derivative_param$sigma_thetabar = derivative[start:end];
-	start = end + 1; end = start + HHsize - 1; derivative_param$beta_theta =apply(cbind(X_ind, data_hh_i$Year == 2006, data_hh_i$Year == 2008, data_hh_i$Year == 2010, data_hh_i$Year == 2012), 2, function(x) sum(x*derivative[start:end])); 
+	start = end + 1; end = start + HHsize - 1; derivative_param$beta_theta =apply(cbind(X_ind, data_hh_i$Year == 2004, data_hh_i$Year == 2006, data_hh_i$Year == 2010, data_hh_i$Year == 2012), 2, function(x) sum(x*derivative[start:end])); 
 	start = end + 1; end = start + HHsize - 1; derivative_param$beta_theta_ind =apply(X_ind, 2, function(x) sum(x*derivative[start:end])); 
 
 	return(list(f0, derivative_param))
