@@ -68,7 +68,9 @@ message('bootstrapping indices')
 numcores = 2; 
 set.seed(job_index);
 sample_index = sample(1:length(data_hh_list), length(data_hh_list), replace=TRUE)
-sample_r_theta = sample(Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, function(x) ifelse(nrow(data_hh_list[[x]]) <= 4, x, NA)))))], 5000)
+sample_r_theta = Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, function(x) ifelse(nrow(data_hh_list[[x]]) <= 4, x, NA)))))]
+sample_r_theta = sample(sample_r_theta, length(sample_r_theta), replace=TRUE)
+# sample_r_theta = sample(Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, function(x) ifelse(nrow(data_hh_list[[x]]) <= 4, x, NA)))))], 5000)
 sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
 sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 
@@ -388,6 +390,13 @@ mat_M = do.call('rbind', lapply(data_hh_list[sample_r_theta[which(!(is.na(releva
     return(cbind(x$M_expense, x$M_expense^2))
   }))
 
+X_hh_all = do.call('rbind',lapply(moment_eligible_hh_output, function(output_hh) output_hh$X_hh))
+
+vec_Y_nona = do.call('c', lapply(data_hh_list[sample_r_theta[which(!(is.na(relevant_index_na)))]], function(x) {
+    return(x$Income[1])
+  }))
+
+
 estimate_r_thetabar = optimize(function(x) {
       # optim_rf_trial = optim(trial_paraam[-zero_index], function(x) {
         x_new = param_trial; 
@@ -413,8 +422,8 @@ estimate_r_thetabar = optimize(function(x) {
 
 
         root_r = do.call('c',lapply(moment_eligible_hh_output, function(output_hh) output_hh$root_r))
-        X_hh_all = do.call('rbind',lapply(moment_eligible_hh_output, function(output_hh) output_hh$X_hh))
 
+        root_r_none_inf = do.call('c', lapply(relevant_index, function(index) c(1:n_halton_at_r) %in% index[[2]]))
         fx_r = function(x_r, derivative=FALSE) {
           mean_vec = rep(X_hh_all %*% x_r[-length(x_r)], each = n_halton_at_r)
           sd = exp(x_r[length(x_r)])
@@ -432,7 +441,8 @@ estimate_r_thetabar = optimize(function(x) {
           }
           
           # output = -mean(full_insurance_indicator_nona * log(matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r) %>% colMeans + 1e-5) + (1 - full_insurance_indicator_nona) * log((1 - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r) %>% colMeans)) + 1e-5))
-          output = mean(full_insurance_indicator_nona - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r) %>% colMeans))^2
+          # output = sum((full_insurance_indicator_nona - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r)) %>% colMeans))^2 + sum((full_insurance_indicator_nona - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r)) %>% colMeans)^2 * vec_Y_nona^2)
+          output = sum((full_insurance_indicator_nona - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r)) %>% colMeans)^2 * vec_Y_nona^2)
         
           print('x_r = '); print(x_r);
           print('output = '); print(output);
@@ -450,7 +460,7 @@ estimate_r_thetabar = optimize(function(x) {
 
         # optim_r = splitfngr::optim_share(rep(0, length(param_trial[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r)])), function(x) fx_r(x, derivative=TRUE), control=list(maxit=1000), method='BFGS') 
 
-        optim_r = optim(c(rep(0,7),2), fx_r, control=list(maxit=1000), method='BFGS') 
+        optim_r = optim(c(rep(0,7),-2), fx_r, control=list(maxit=1000), method='Nelder-Mead') 
 
         param_trial[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r)] <<- optim_r$par
         param_trial[x_transform[[2]]$sigma_theta] <<- x; 
