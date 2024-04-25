@@ -207,13 +207,14 @@ mat_Year = do.call('rbind', lapply(data_hh_list_pref, function(x) {
     }))
 outer_output = 0; 
 
-large_estimate_pref_parameter = optim(rep(0, 4), function(y) {
+large_estimate_pref_parameter = optim(rep(0, 3), function(y) {
   if (max(abs(y)) > 5) {
     return(NA)
   }
   message('Preparing data for estimation of preference')
   data_hh_list_pref = list()
-  param_trial[tail(transform_param_trial[[2]][['beta_theta']], n=4)] <<- y; 
+  y_full = c(y[1],0,y[2],y[3])
+  param_trial[tail(transform_param_trial[[2]][['beta_theta']], n=4)] <<- y_full; 
   transform_param_trial = transform_param(param_trial, return_index=TRUE)
 
   if (Sys.info()[['sysname']] == 'Windows') {
