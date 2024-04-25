@@ -111,7 +111,6 @@ if (Sys.info()[['sysname']] == 'Windows') {
 }
 
 
-
 estimate_theta_parameter = splitfngr::optim_share(rep(0, length(active_index)), function(x) {
     x_new = param_trial; 
     x_new[active_index] = x; 
@@ -178,10 +177,11 @@ estimate_theta_parameter = splitfngr::optim_share(rep(0, length(active_index)), 
   }, control=list(maxit=1000), method='BFGS') 
 
 param_trial[active_index] = estimate_theta_parameter$par
+
 param_trial[c(transform_param_trial[[2]]$sigma_delta, transform_param_trial[[2]]$sigma_gamma, transform_param_trial[[2]]$sigma_omega)] = -2; 
 
 transform_param_trial = transform_param(param_trial, return_index=TRUE)
-param_trial[tail(transform_param_trial[[2]][['beta_theta']], n=4)] = 0; 
+param_trial[tail(transform_param_trial[[2]][['beta_theta']], n=4)] = -2; 
 
 n_draw_halton = 1000; 
 if (Sys.info()[['sysname']] == 'Windows') {
@@ -308,9 +308,9 @@ large_estimate_pref_parameter = optim(rep(0, 4), function(y) {
         return(output)
       }, control=list(maxit=1000), method='BFGS')
       
-      param_trial[active_index] <<- estimate_pref_parameter$par
-      print('outer_output = '); print(outer_output)
-      return(outer_output) 
+  param_trial[active_index] <<- estimate_pref_parameter$par
+  print('outer_output = '); print(outer_output)
+  return(outer_output) 
 }, control=list(maxit=1000), method='BFGS')
  
 x_transform = transform_param(param_trial, return_index=TRUE)

@@ -476,6 +476,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 		if (data_hh_i$HHsize_s[1] == 0) {
 			common_household_factor[,i] = halton_mat_list$household_random_factor * (X_ind[i,] %*% param$beta_theta_ind) + t(c(X_ind[i,], data_hh_i$Year[i] == 2004, data_hh_i$Year[i] == 2006, data_hh_i$Year[i] == 2010, data_hh_i$Year[i] == 2012)) %*% param$beta_theta
 			theta_draw[,i] = exp(common_household_factor[,i] + halton_mat_list$individual_factor[,i] * exp(param$sigma_thetabar)) * halton_mat_list$sick[,i]
+			theta_draw[,i] =  lapply(theta_draw[,i], function(xi) ifelse(xi > income_vec[1], income_vec[1], xi)) %>% unlist()
 			
 			random_xi_draws = lapply(halton_mat_list$coverage[,i], function(x) ifelse(x <= p_0[i], 0, ifelse(x <= p_0[i] + p_1[i], 1, (x - p_0[i] - p_1[i])/(1 - p_0[i] - p_1[i])))) %>% unlist()
 			kappa_draw[[1]][,i] = (lapply(1:nrow(theta_draw), function(j) policy_mat_hh_index[[1]][[1]][max(which((theta_draw[j,i] * random_xi_draws[j]) >= policy_mat_hh_index[[1]][[2]][,i])),i]) %>% unlist()) * random_xi_draws + 1 - random_xi_draws
@@ -546,6 +547,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 		for (j in relevant_index) {
 			# Full insurance: 
 			theta_draw = matrix(t(apply(halton_mat_list$theta, 1, function(x) exp(x * s_theta + theta_bar[j,]))), ncol=HHsize) * halton_mat_list$sick
+			theta_draw =  apply(theta_draw, 2, function(theta_draw_i) lapply(theta_draw_i, function(xi) ifelse(xi > income_vec[1], income_vec[1], xi)) %>% unlist())
 
 			for (i in 1:HHsize) {
 				kappa_draw[[1]][,i] = (lapply(1:nrow(theta_draw), function(j) policy_mat_hh_index[[1]][[1]][max(which((theta_draw[j,i] * random_xi_draws[j,i]) >= policy_mat_hh_index[[1]][[2]][,i])),i]) %>% unlist()) * random_xi_draws[,i] + 1 - random_xi_draws[,i]
