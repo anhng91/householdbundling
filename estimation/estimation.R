@@ -193,6 +193,8 @@ X_ind_pref_with_year = cbind(X_ind_pref, mat_Year)
 
 max_sigma_thetabar = sd(data$M_expense) * 2; 
 
+x_transform = transform_param(param_trial, return_index=TRUE)
+
 aggregate_moment_pref = function(x_transform) {
   if (Sys.info()[['sysname']] == 'Windows') {
     clusterExport(cl, 'x_transform',envir=environment())
