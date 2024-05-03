@@ -420,7 +420,8 @@ all_insurance = function(vec_) {
 #' @param sick_parameters a list produced from optim 
 #' @param xi_parameters a list produced from optim
 #' @param short if TRUE, does not return dataframe of the original data
-#' @param relevant_index relevant index to compute m and r threshold, default to all halton draws. 
+#' @param relevant_index relevant index to compute m and r threshold, default to all halton draws.
+#' @param cap_theta_draw_normalized is an index to insure that the moment generating function is finite.
 #'
 #' @return a list that includes the draws of household-related objects,taking into account the sick parameters and the distribution of coverage. This does not take into account estimated preference parameters or unconditional distribution of health shocks. See `compute_expected_U_m` for the draws post-estimation of preference parameters and health shocks distribution.
 #' 
@@ -429,7 +430,7 @@ all_insurance = function(vec_) {
 #' @examples
 #' household_draw_theta_kappa_Rdraw(1, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample)
 #' 
-household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 1000, n_draw_gauss = 10, sick_parameters, xi_parameters, u_lowerbar = -10, short=TRUE, relevant_index = c(1:n_draw_halton), theta_derivative=FALSE) {
+household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 1000, n_draw_gauss = 10, sick_parameters, xi_parameters, u_lowerbar = -10, short=TRUE, relevant_index = c(1:n_draw_halton), theta_derivative=FALSE,cap_theta_draw_normalized = 0.95) {
 	set.seed(1);
 	data_hh_i = data_hh_list[[hh_index]]; 
 	HHsize = nrow(data_hh_i);
@@ -454,7 +455,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 	}
 	halton_mat_list$gamma = (halton_mat[,(3 * HHsize + 1):(4 * HHsize)]) %>% as.matrix(ncol = HHsize);
 	halton_mat_list$delta = (halton_mat[,(4 * HHsize + 1):(5 * HHsize)]) %>% as.matrix(ncol = HHsize);
-	halton_mat_list$theta = qnorm(halton_mat[,(5 * HHsize + 1):(6 * HHsize)]) %>% as.matrix(ncol = HHsize);
+	halton_mat_list$theta = qnorm(apply(halton_mat[,(5 * HHsize + 1):(6 * HHsize)], 2, function(col) lapply(function(row_element) min(row_element, cap_theta_draw_normalized)) %>% unlist())) %>% as.matrix(ncol = HHsize)
 	
 	kappa_draw = list(); 
 
@@ -964,6 +965,7 @@ transform_param = function(param_trial, return_index=FALSE, init=FALSE) {
 #' @param policy_mat_hh is the policy matrix (might be actual or a counterfactual), should follow the format of policy_mat[[hh_index]]
 #' @param constraint_function is a function that can reflect whether we are imposing pure bundling or something else on the possible choice set. For example, for pure bundling, constraint_function = function(x) {x[-c(1,length(x))] = -Inf; return(x)}
 #' @param within_hh_heterogeneity is a list with list names gamma, delta, and theta_bar. If a list element is true, within-hh-heterogeneity is allowed.
+#' @param cap_theta_draw_normalized is an index to insure that the moment generating function is finite.
 #'
 #' @return a list that includes the draws of household-related objects,taking into account the sick parameters and the distribution of coverage, the optimal insurance choice, the amount of oop, and the cost to the insurance company
 #' 
@@ -973,7 +975,7 @@ transform_param = function(param_trial, return_index=FALSE, init=FALSE) {
 #' counterfactual_household_draw_theta_kappa_Rdraw(3, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample, u_lowerbar = -10, policy_mat_hh = policy_mat[[3]], seed_number = 1, constraint_function = function(x) x)
 #' 
 #' 
-counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 1000, n_draw_gauss = 10, sick_parameters, xi_parameters, u_lowerbar = -10, policy_mat_hh, seed_number=1, constraint_function = function(x) x, within_hh_heterogeneity = list(omega=TRUE, gamma=TRUE, delta=TRUE, theta_bar=TRUE)) {
+counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 1000, n_draw_gauss = 10, sick_parameters, xi_parameters, u_lowerbar = -10, policy_mat_hh, seed_number=1, constraint_function = function(x) x, within_hh_heterogeneity = list(omega=TRUE, gamma=TRUE, delta=TRUE, theta_bar=TRUE), cap_theta_draw_normalized = 0.95) {
 	set.seed(hh_index);
 	data_hh_i = data_hh_list[[hh_index]]; 
 	HHsize = nrow(data_hh_i);
@@ -997,7 +999,7 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 	}
 	halton_mat_list$gamma = (halton_mat[,(3 * HHsize + 1):(4 * HHsize)]) %>% as.matrix(ncol = HHsize);
 	halton_mat_list$delta = (halton_mat[,(4 * HHsize + 1):(5 * HHsize)]) %>% as.matrix(ncol = HHsize);
-	halton_mat_list$theta = qnorm(halton_mat[,(5 * HHsize + 1):(6 * HHsize)]) %>% as.matrix(ncol = HHsize);
+	halton_mat_list$theta = qnorm(apply(halton_mat[,(5 * HHsize + 1):(6 * HHsize)], 2, function(col) lapply(function(row_element) min(row_element, cap_theta_draw_normalized)) %>% unlist())) %>% as.matrix(ncol = HHsize);
 	beta_gamma = X_ind %*% param$beta_gamma; 
 	s_gamma = exp(param$sigma_gamma); 
 	gamma = NULL
