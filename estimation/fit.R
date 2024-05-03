@@ -53,10 +53,6 @@ if (Sys.info()[['sysname']] == 'Windows') {
 	return(output)}, mc.cores=numcores)
 }
 
-# for (id in Vol_HH_list_index) {
-# 	output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -10, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
-# }
-
 fit_values = do.call('rbind', fit_values)
 
 observed_data_voluntary = do.call('rbind', data_hh_list[Vol_HH_list_index])
