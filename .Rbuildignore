@@ -1,3 +1,4 @@
 ^data-raw$
 [.]csv$
 ^estimation$
+^bash_scripts$

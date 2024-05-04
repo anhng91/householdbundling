@@ -1024,8 +1024,8 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 		}
 	}
 	 
-	s_thetabar = sqrt(1/(1 + exp(param$sigma_theta))) * exp(param$sigma_thetabar); 
-	s_theta = sqrt(exp(param$sigma_theta)/(1 + exp(param$sigma_theta))) * exp(param$sigma_thetabar); 
+	s_thetabar = exp(param$sigma_thetabar) - param$sigma_theta; 
+	s_theta = param$sigma_theta; 
 	theta_bar = NULL
 
 	random_hh_factor = rnorm(1)

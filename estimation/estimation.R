@@ -1,3 +1,15 @@
+args = commandArgs(trailingOnly=TRUE)
+if (length(args)<2) { 
+  numcores = 2;
+  job_index = 1;  
+} else {
+  job_index = as.numeric(args[1]);
+  numcores = as.numeric(args[2]); 
+}
+if (dir.exists('work/teckyongtan/tecktan/Oil/Data/R_lib')) {
+  .libPaths('work/teckyongtan/tecktan/Oil/Data/R_lib')
+}
+options("install.lock"=FALSE)
 library(knitr)
 library(tidyverse)
 library(lfe)
@@ -65,7 +77,6 @@ sample_identify_pref = sample_identify_pref[!(is.na(sample_identify_pref))]
 
 # Bootstrapping indices 
 message('bootstrapping indices')
-numcores = 2; 
 set.seed(job_index);
 sample_index = sample(1:length(data_hh_list), length(data_hh_list), replace=TRUE)
 sample_r_theta = Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, function(x) ifelse(nrow(data_hh_list[[x]]) <= 4, x, NA)))))]
@@ -103,7 +114,6 @@ for (index in 1:length(sample_identify_theta)) {
 message('Estimating theta')
 
 if (Sys.info()[['sysname']] == 'Windows') {
-  numcores = 10; 
   cl = makeCluster(numcores);
   clusterEvalQ(cl, library('tidyverse'))
   clusterEvalQ(cl, library('familyenrollment'))
@@ -344,12 +354,12 @@ save_param_outside = NULL;
 
 # some draws will be insensitive to values of sigma_thetabar, so we do not need to simulate over these draws multiple times. 
 x_new = param_trial; 
-x_new[x_transform[[2]]$sigma_theta] = 5;
+x_new[x_transform[[2]]$sigma_theta] = 0;
 x_transform = transform_param(x_new, return_index=TRUE)
 n_halton_at_r = 100; 
 if (Sys.info()[['sysname']] == 'Windows') {
   x_new = param_trial; 
-  x_new[x_transform[[2]]$sigma_theta] = 5;
+  x_new[x_transform[[2]]$sigma_theta] = 0;
   x_transform = transform_param(x_new, return_index=TRUE)
   clusterExport(cl, c('x_transform', 'sick_parameters', 'xi_parameters', 'n_halton_at_r'))
   moment_eligible_hh_output_upper = parLapply(cl, sample_r_theta, function(mini_data_index) {
@@ -361,7 +371,7 @@ if (Sys.info()[['sysname']] == 'Windows') {
 }
 
 x_new = param_trial; 
-x_new[x_transform[[2]]$sigma_theta] = -5;
+x_new[x_transform[[2]]$sigma_theta] = 0;
 x_transform = transform_param(x_new, return_index=TRUE)
 if (Sys.info()[['sysname']] == 'Windows') {
   clusterExport(cl, c('x_transform', 'sick_parameters', 'xi_parameters', 'n_halton_at_r'))
@@ -446,7 +456,8 @@ estimate_r_thetabar = optimize(function(x) {
           # output = -mean(full_insurance_indicator_nona * log(matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r) %>% colMeans + 1e-5) + (1 - full_insurance_indicator_nona) * log((1 - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r) %>% colMeans)) + 1e-5))
           # output = sum((full_insurance_indicator_nona - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r)) %>% colMeans))^2 + sum((full_insurance_indicator_nona - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r)) %>% colMeans)^2 * vec_Y_nona^2)
           output = sum((full_insurance_indicator_nona - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r)) %>% colMeans)^2 * vec_Y_nona^2)
-        
+          print('actual insurance = '); print(summary(full_insurance_indicator_nona))
+          print('predicted insurance '); print(summary(matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r)))
           print('x_r = '); print(x_r);
           print('output = '); print(output);
           if (derivative) {
@@ -492,5 +503,10 @@ param_final$other = param_trial;
 param_final$xi = xi_parameters;
 param_final$sick = sick_parameters
 
-saveRDS(param_final, file=paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
+if (dir.exists('../../householdbundling_estimate')) {
+  saveRDS(param_final, file=paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
+} else {
+  dir.create('../../householdbundling_estimate') 
+  saveRDS(param_final, file=paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
+}
 
