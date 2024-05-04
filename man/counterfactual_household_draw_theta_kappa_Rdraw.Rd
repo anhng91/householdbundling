@@ -16,9 +16,10 @@ counterfactual_household_draw_theta_kappa_Rdraw(
   u_lowerbar = -10,
   policy_mat_hh,
   seed_number = 1,
-  constraint_function = function(x) x,
+  constraint_function,
   within_hh_heterogeneity = list(omega = TRUE, gamma = TRUE, delta = TRUE, theta_bar =
-    TRUE)
+    TRUE),
+  cap_theta_draw_normalized = 0.95
 )
 }
 \arguments{
@@ -41,6 +42,8 @@ counterfactual_household_draw_theta_kappa_Rdraw(
 \item{constraint_function}{is a function that can reflect whether we are imposing pure bundling or something else on the possible choice set. For example, for pure bundling, constraint_function = function(x) {x\link{-c(1,length(x))} = -Inf; return(x)}}
 
 \item{within_hh_heterogeneity}{is a list with list names gamma, delta, and theta_bar. If a list element is true, within-hh-heterogeneity is allowed.}
+
+\item{cap_theta_draw_normalized}{is an index to insure that the moment generating function is finite.}
 }
 \value{
 a list that includes the draws of household-related objects,taking into account the sick parameters and the distribution of coverage, the optimal insurance choice, the amount of oop, and the cost to the insurance company
@@ -51,7 +54,7 @@ is only conducted once, and there is no integration over thetabar. Also, the ins
 all possible bundles.
 }
 \examples{
-counterfactual_household_draw_theta_kappa_Rdraw(3, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample, u_lowerbar = -10, policy_mat_hh = policy_mat[[3]], seed_number = 1, constraint_function = function(x) x)
+counterfactual_household_draw_theta_kappa_Rdraw(3, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample, u_lowerbar = -10, policy_mat_hh = policy_mat[[3]], seed_number = 1)
 
 
 }

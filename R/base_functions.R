@@ -455,7 +455,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 	}
 	halton_mat_list$gamma = (halton_mat[,(3 * HHsize + 1):(4 * HHsize)]) %>% as.matrix(ncol = HHsize);
 	halton_mat_list$delta = (halton_mat[,(4 * HHsize + 1):(5 * HHsize)]) %>% as.matrix(ncol = HHsize);
-	halton_mat_list$theta = qnorm(apply(halton_mat[,(5 * HHsize + 1):(6 * HHsize)], 2, function(col) lapply(function(row_element) min(row_element, cap_theta_draw_normalized)) %>% unlist())) %>% as.matrix(ncol = HHsize)
+	halton_mat_list$theta = qnorm(apply(halton_mat[,(5 * HHsize + 1):(6 * HHsize)], 2, function(col) lapply(col, function(row_element) min(row_element, cap_theta_draw_normalized)) %>% unlist())) %>% as.matrix(ncol = HHsize)
 	
 	kappa_draw = list(); 
 
@@ -972,10 +972,10 @@ transform_param = function(param_trial, return_index=FALSE, init=FALSE) {
 #' @export
 #'
 #' @examples
-#' counterfactual_household_draw_theta_kappa_Rdraw(3, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample, u_lowerbar = -10, policy_mat_hh = policy_mat[[3]], seed_number = 1, constraint_function = function(x) x)
+#' counterfactual_household_draw_theta_kappa_Rdraw(3, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample, u_lowerbar = -10, policy_mat_hh = policy_mat[[3]], seed_number = 1)
 #' 
 #' 
-counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 1000, n_draw_gauss = 10, sick_parameters, xi_parameters, u_lowerbar = -10, policy_mat_hh, seed_number=1, constraint_function = function(x) x, within_hh_heterogeneity = list(omega=TRUE, gamma=TRUE, delta=TRUE, theta_bar=TRUE), cap_theta_draw_normalized = 0.95) {
+counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 1000, n_draw_gauss = 10, sick_parameters, xi_parameters, u_lowerbar = -10, policy_mat_hh, seed_number=1, constraint_function, within_hh_heterogeneity = list(omega=TRUE, gamma=TRUE, delta=TRUE, theta_bar=TRUE), cap_theta_draw_normalized = 0.95) {
 	set.seed(hh_index);
 	data_hh_i = data_hh_list[[hh_index]]; 
 	HHsize = nrow(data_hh_i);
@@ -999,7 +999,7 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 	}
 	halton_mat_list$gamma = (halton_mat[,(3 * HHsize + 1):(4 * HHsize)]) %>% as.matrix(ncol = HHsize);
 	halton_mat_list$delta = (halton_mat[,(4 * HHsize + 1):(5 * HHsize)]) %>% as.matrix(ncol = HHsize);
-	halton_mat_list$theta = qnorm(apply(halton_mat[,(5 * HHsize + 1):(6 * HHsize)], 2, function(col) lapply(function(row_element) min(row_element, cap_theta_draw_normalized)) %>% unlist())) %>% as.matrix(ncol = HHsize);
+	halton_mat_list$theta = qnorm(apply(halton_mat[,(5 * HHsize + 1):(6 * HHsize)], 2, function(col) lapply(col, function(row_element) min(row_element, cap_theta_draw_normalized)) %>% unlist())) %>% as.matrix(ncol = HHsize);
 	beta_gamma = X_ind %*% param$beta_gamma; 
 	s_gamma = exp(param$sigma_gamma); 
 	gamma = NULL

@@ -13,7 +13,9 @@ household_draw_theta_kappa_Rdraw(
   xi_parameters,
   u_lowerbar = -10,
   short = TRUE,
-  relevant_index = c(1:n_draw_halton)
+  relevant_index = c(1:n_draw_halton),
+  theta_derivative = FALSE,
+  cap_theta_draw_normalized = 0.95
 )
 }
 \arguments{
@@ -34,6 +36,8 @@ household_draw_theta_kappa_Rdraw(
 \item{short}{if TRUE, does not return dataframe of the original data}
 
 \item{relevant_index}{relevant index to compute m and r threshold, default to all halton draws.}
+
+\item{cap_theta_draw_normalized}{is an index to insure that the moment generating function is finite.}
 }
 \value{
 a list that includes the draws of household-related objects,taking into account the sick parameters and the distribution of coverage. This does not take into account estimated preference parameters or unconditional distribution of health shocks. See \code{compute_expected_U_m} for the draws post-estimation of preference parameters and health shocks distribution.
