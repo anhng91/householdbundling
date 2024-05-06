@@ -9,4 +9,4 @@ conda activate R-CUSTOM
 
 cd /work/teckyongtan/tecktan/Bundling/familyenrollment
 
-Rscript estimation/estimation.R $SLURM_ARRAY_TASK_ID $SLURM_NTASKS_PER_NODE 
+Rscript estimation/estimation_mac.R $SLURM_ARRAY_TASK_ID $SLURM_NTASKS_PER_NODE 

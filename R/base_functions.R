@@ -581,8 +581,8 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 				if (fr(0) >= 0) {
 					root_r[i] = 0
 				} else {
-					fr_upper = fr(10)
-					upper = 10; 
+					fr_upper = fr(3)
+					upper = 3; 
 					while (is.nan(fr_upper)) {
 						upper = upper/2
 						fr_upper = fr(upper)
@@ -603,7 +603,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 
 	if (data_hh_i$HHsize_s[1] > 0) {
 		output = list(); 
-		output$Em = colMeans(apply(m, 2, function(x) x * prob_full_insured))/sum(prob_full_insured)
+		output$Em = colMeans(apply(m, 2, function(x) x * prob_full_insured/sum(prob_full_insured)))
 		output$Prob_full = mean(prob_full_insured)
 		output$root_r = root_r_vec
 		output$m = m
