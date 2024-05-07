@@ -400,11 +400,15 @@ full_insurance_indicator_ind_level_nona = do.call('c', lapply(data_hh_list[sampl
     return(rep(x$HHsize_s[1] == x$N_vol[1], x$HHsize[1]))
   }))
 
+HHsize_estimate_r = do.call('c', lapply(data_hh_list[sample_r_theta[which(!(is.na(relevant_index_na)))]], function(x) {
+    return(x$HHsize[1])
+  }))
+
 mat_M = do.call('rbind', lapply(data_hh_list[sample_r_theta[which(!(is.na(relevant_index_na)))]], function(x) {
     return(cbind(x$M_expense, x$M_expense^2))
   }))
 
-X_hh_all = do.call('rbind',lapply(moment_eligible_hh_output_lower, function(output_hh) output_hh$X_hh))
+X_hh_all = do.call('rbind',lapply(do.call('c', lapply(relevant_index_nona, function(x) x[[1]])), function(output_hh_index) var_hh(data_hh_list[[output_hh_index]])))
 
 vec_Y_nona = do.call('c', lapply(data_hh_list[sample_r_theta[which(!(is.na(relevant_index_na)))]], function(x) {
     return(x$Income[1])
@@ -444,8 +448,8 @@ estimate_r_thetabar = optimize(function(x) {
           prob = pnorm(root_r, mean = mean_vec, sd = sd)
           prob_0 = pnorm(0, mean = mean_vec, sd = sd)
           if (derivative) {
-            dprob = dnorm((root_r-mean_vec)/sd);
-            dprob_0 = dnorm((0-mean_vec)/sd);
+            dprob = dnorm((root_r-mean_vec)/sd)/sd;
+            dprob_0 = dnorm((0-mean_vec)/sd)/sd;
             d_prob_mean = apply(X_hh_all,2, function(x) x * dprob*(-1)) ;
             d_prob_sd = dprob *(-1)/sd^2; 
             d_prob_0_mean = apply(X_hh_all,2, function(x) x * dprob_0)*(-1) ;
@@ -456,7 +460,8 @@ estimate_r_thetabar = optimize(function(x) {
           
           # output = -mean(full_insurance_indicator_nona * log(matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r) %>% colMeans + 1e-5) + (1 - full_insurance_indicator_nona) * log((1 - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r) %>% colMeans)) + 1e-5))
           # output = sum((full_insurance_indicator_nona - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r)) %>% colMeans))^2 + sum((full_insurance_indicator_nona - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r)) %>% colMeans)^2 * vec_Y_nona^2)
-          output = sum((full_insurance_indicator_nona - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r)) %>% colMeans)^2 * vec_Y_nona^2)
+          output = sum((full_insurance_indicator_nona * HHsize_estimate_r - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r) %>% colMeans) * HHsize_estimate_r)^2 * vec_Y_nona^2)
+          # output = sum((full_insurance_indicator_nona - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r)) %>% colMeans)^2)
           print('actual insurance = '); print(summary(full_insurance_indicator_nona))
           print('predicted insurance '); print(summary(matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r) %>% colMeans))
           print('x_r = '); print(x_r);
@@ -475,7 +480,9 @@ estimate_r_thetabar = optimize(function(x) {
 
         # optim_r = splitfngr::optim_share(rep(0, length(param_trial[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r)])), function(x) fx_r(x, derivative=TRUE), control=list(maxit=1000), method='BFGS') 
 
-        optim_r = optim(c(rep(0,7),-2), fx_r, control=list(maxit=1000), method='Nelder-Mead') 
+        optim_r = optim(c(rep(-0.1,7),-2), fx_r, control=list(maxit=1000), method='Nelder-Mead') 
+
+        optim_r = optim(rnorm(8), fx_r, control=list(maxit=1000), method='Nelder-Mead') 
 
         param_trial[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r)] <<- optim_r$par
         param_trial[x_transform[[2]]$sigma_theta] <<- x; 
