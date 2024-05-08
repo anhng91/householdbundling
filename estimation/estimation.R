@@ -414,6 +414,13 @@ vec_Y_nona = do.call('c', lapply(data_hh_list[sample_r_theta[which(!(is.na(relev
     return(x$Income[1])
   }))
 
+min_theta_R = do.call('c', lapply(do.call('c', lapply(relevant_index_nona, function(x) x[[1]])), function(output_hh_index) min(cbind(var_ind(data_hh_list[[output_hh_index]]), data_hh_list[[output_hh_index]]$Year == 2004, data_hh_list[[output_hh_index]]$Year == 2006, data_hh_list[[output_hh_index]]$Year == 2010, data_hh_list[[output_hh_index]]$Year == 2012) %*% x_transform[[1]]$beta_theta)))
+
+max_theta_R = do.call('c', lapply(do.call('c', lapply(relevant_index_nona, function(x) x[[1]])), function(output_hh_index) max(cbind(var_ind(data_hh_list[[output_hh_index]]), data_hh_list[[output_hh_index]]$Year == 2004, data_hh_list[[output_hh_index]]$Year == 2006, data_hh_list[[output_hh_index]]$Year == 2010, data_hh_list[[output_hh_index]]$Year == 2012) %*% x_transform[[1]]$beta_theta)))
+
+mean_theta_R = do.call('c', lapply(do.call('c', lapply(relevant_index_nona, function(x) x[[1]])), function(output_hh_index) mean(cbind(var_ind(data_hh_list[[output_hh_index]]), data_hh_list[[output_hh_index]]$Year == 2004, data_hh_list[[output_hh_index]]$Year == 2006, data_hh_list[[output_hh_index]]$Year == 2010, data_hh_list[[output_hh_index]]$Year == 2012) %*% x_transform[[1]]$beta_theta)))
+
+n_involuntary = do.call('c', lapply(do.call('c', lapply(relevant_index_nona, function(x) x[[1]])), function(output_hh_index) data_hh_list[[output_hh_index]]$N_com[1] + data_hh_list[[output_hh_index]]$N_bef[1] + data_hh_list[[output_hh_index]]$N_std_w_ins))
 
 estimate_r_thetabar = optimize(function(x) {
       # optim_rf_trial = optim(trial_paraam[-zero_index], function(x) {
@@ -443,46 +450,38 @@ estimate_r_thetabar = optimize(function(x) {
 
         root_r_none_inf = do.call('c', lapply(relevant_index, function(index) c(1:n_halton_at_r) %in% index[[2]]))
         fx_r = function(x_r, derivative=FALSE) {
+          if (max(abs(x_r)) > 5) {
+            return(NA)
+          }
           mean_vec = rep(X_hh_all %*% x_r[-length(x_r)], each = n_halton_at_r)
           sd = exp(x_r[length(x_r)])
-          prob = pnorm(root_r, mean = mean_vec, sd = sd)
-          prob_0 = pnorm(0, mean = mean_vec, sd = sd)
-          if (derivative) {
-            dprob = dnorm((root_r-mean_vec)/sd)/sd;
-            dprob_0 = dnorm((0-mean_vec)/sd)/sd;
-            d_prob_mean = apply(X_hh_all,2, function(x) x * dprob*(-1)) ;
-            d_prob_sd = dprob *(-1)/sd^2; 
-            d_prob_0_mean = apply(X_hh_all,2, function(x) x * dprob_0)*(-1) ;
-            d_prob_0_sd = dprob_0*(-1)/sd^2; 
-            d_output_mean = do.call('c', lapply(1:ncol(d_prob_mean), function(id_col) mean(matrix(((-d_prob_mean[,id_col])*(1 - prob_0) + d_prob_0_mean[,id_col]*(1 - prob))/(1 - prob_0)^2, nrow=n_halton_at_r) %>% colMeans * (full_insurance_indicator_nona - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r) %>% colMeans)))))
-            d_output_sd = mean(matrix(((-d_prob_sd)*(1 - prob_0) + d_prob_0_sd*(1 - prob))/(1 - prob_0)^2, nrow=n_halton_at_r) %>% colMeans * (full_insurance_indicator_nona - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r) %>% colMeans)))
-          }
-          
-          # output = -mean(full_insurance_indicator_nona * log(matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r) %>% colMeans + 1e-5) + (1 - full_insurance_indicator_nona) * log((1 - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r) %>% colMeans)) + 1e-5))
-          # output = sum((full_insurance_indicator_nona - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r)) %>% colMeans))^2 + sum((full_insurance_indicator_nona - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r)) %>% colMeans)^2 * vec_Y_nona^2)
-          output = sum((full_insurance_indicator_nona * HHsize_estimate_r - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r) %>% colMeans) * HHsize_estimate_r)^2 * vec_Y_nona^2)
+          prob = pnorm((root_r -mean_vec)/sd)
+          prob[which(root_r == 4)] = 1
+          prob[which(root_r < 0)] = 0
+          prob[which(root_r >= 0)] = (prob[which(root_r >= 0)] -pnorm(- mean_vec[which(root_r >= 0)]/sd)) /(1 - pnorm(- mean_vec[which(root_r >= 0)]/sd))
+
+          output = sum((full_insurance_indicator_nona - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * vec_Y_nona^2) + 
+            sum((full_insurance_indicator_nona - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * mean_theta_R^2) +
+            sum((full_insurance_indicator_nona - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * min_theta_R^2) + 
+            sum((full_insurance_indicator_nona - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * max_theta_R^2) + 
+            sum((full_insurance_indicator_nona - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * n_involuntary^2)
           # output = sum((full_insurance_indicator_nona - (matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r)) %>% colMeans)^2)
           print('actual insurance = '); print(summary(full_insurance_indicator_nona))
-          print('predicted insurance '); print(summary(matrix((1 - prob)/(1 - prob_0),nrow=n_halton_at_r) %>% colMeans))
+          print('predicted insurance '); print(summary(matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))
           print('x_r = '); print(x_r);
           print('output = '); print(output);
-          if (derivative) {
-            return(list(output, c(- d_output_mean, - d_output_sd * sd)))
-          } else{
-            if (is.nan(output) | is.infinite(output)) {
-              return(NA)
-            }
-            else {
-              return(output)
-            }
+
+          if (is.nan(output) | is.infinite(output)) {
+            return(NA)
+          }
+          else {
+            return(output)
           }
         }
 
         # optim_r = splitfngr::optim_share(rep(0, length(param_trial[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r)])), function(x) fx_r(x, derivative=TRUE), control=list(maxit=1000), method='BFGS') 
 
-        optim_r = optim(c(rep(-0.1,7),-2), fx_r, control=list(maxit=1000), method='Nelder-Mead') 
-
-        optim_r = optim(rnorm(8), fx_r, control=list(maxit=1000), method='Nelder-Mead') 
+        optim_r = optim(rep(0,8), function(x) fx_r(x), control=list(maxit=1000), method='Nelder-Mead') 
 
         param_trial[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r)] <<- optim_r$par
         param_trial[x_transform[[2]]$sigma_theta] <<- x; 

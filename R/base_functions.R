@@ -555,8 +555,8 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 
 			m[j,] = colMeans(theta_draw * kappa_draw[[1]] * (1 + matrix(apply(theta_draw * kappa_draw[[1]], 2, function(x) x * R_draw[[1]]^omega[j]), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[1]], 1, function(x) x^(-gamma[j,]) * delta[j,])), ncol=HHsize)), na.rm=TRUE)
 
-			U_full_insurance = (lapply((R_draw[[1]]^(1 - omega[j]) - 1)/(1 - omega[j]), function(x) ifelse(is.infinite(x), 0, x)) %>% unlist()  - rowSums(matrix(t(apply(theta_draw, 1, function(x) x * delta[j,])), ncol=HHsize) * matrix(t(apply(kappa_draw[[1]], 1, function(x) ((x + 1)^(1 - gamma[j,]) - 1)/(1 - gamma[j,]))), ncol=HHsize))) 
-			print('U_full_insurance'); print(summary(U_full_insurance))
+			U_full_insurance = (lapply((R_draw[[1]]^(1 - omega[j]) - 1)/(1 - omega[j]), function(x) ifelse(is.infinite(x), 0, x)) %>% unlist()  - rowSums(matrix(t(apply(theta_draw, 1, function(x) x * delta[j,])), ncol=HHsize) * matrix(t(apply(kappa_draw[[1]], 1, function(x) ((x + 1)^(1 - gamma[j,]) - 1)/(1 - gamma[j,]))), ncol=HHsize))) * (R_draw[[1]] > 0) + (R_draw[[1]] <= 0) * (income_vec[1 + length(elig_member_index)] - rowSums(theta_draw * kappa_draw[[1]]) + u_lowerbar)  
+			# print('U_full_insurance'); print(summary(U_full_insurance))
 
 			U_drop = list()
 
@@ -568,38 +568,50 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 
 				R_draw[[i+1]] =  lapply(income_vec[length(elig_member_index)] - rowSums(theta_draw * kappa_draw[[i+1]]), function(x) max(x,0)) %>% unlist()	
 
-				U_drop[[i+1]] = (lapply((R_draw[[i+1]]^(1 - omega[j]) - 1)/(1 - omega[j]), function(x) ifelse(is.infinite(x), 0, x)) %>% unlist() - rowSums(matrix(t(apply(theta_draw, 1, function(x) x * delta[j,])), ncol=HHsize) * matrix(t(apply(kappa_draw[[i+1]], 1, function(x) ((x + 1)^(1 - gamma[j,]) - 1)/(1 - gamma[j,]))), ncol=HHsize))) 
-				print(paste0('U_drop at ', i));  print(U_drop[[i+1]] %>% summary)
+				U_drop[[i+1]] = (lapply((R_draw[[i+1]]^(1 - omega[j]) - 1)/(1 - omega[j]), function(x) ifelse(is.infinite(x), 0, x)) %>% unlist() - rowSums(matrix(t(apply(theta_draw, 1, function(x) x * delta[j,])), ncol=HHsize) * matrix(t(apply(kappa_draw[[i+1]], 1, function(x) ((x + 1)^(1 - gamma[j,]) - 1)/(1 - gamma[j,]))), ncol=HHsize))) * (R_draw[[i+1]] > 0) + (R_draw[[i + 1]] == 0) * (income_vec[length(elig_member_index)] - rowSums(theta_draw * kappa_draw[[i+1]]) + u_lowerbar) 
+				# print(paste0('U_drop at ', i));  print(U_drop[[i+1]] %>% summary)
 				fr = function(r) {
-					if (r > 0) {
-						return(mean(- exp(-r * U_full_insurance) + exp(-r * U_drop[[i+1]])))
+					if (r != 0) {
+						return((log(mean(exp(-r * U_full_insurance))) - log(mean(exp(-r * U_drop[[i+1]]))))^2)
 					} else if (r == 0) {
-						return(mean(U_full_insurance - U_drop[[i + 1]]))
+						return((mean(U_full_insurance) - mean(U_drop[[i + 1]]))^2)
 					}
 				}
 				# print(fr(0))
-				if (fr(0) >= 0) {
-					root_r[i] = 0
+				# if (fr(0) >= 0) {
+				# 	root_r[i] = 0
+				# } else {
+				# 	fr_upper = fr(3)
+				# 	upper = 3; 
+				# 	while (is.nan(fr_upper)) {
+				# 		upper = upper/2
+				# 		fr_upper = fr(upper)
+				# 	}
+				# 	if (fr_upper < 0) {
+				# 		root_r[i] = Inf
+				# 	} else {
+				# 		root_r[i] = uniroot(fr, c(0, upper))$root
+				# 	}
+				# }
+				root_r_optimize = optimize(fr, c(-4,4))
+				# print(root_r_optimize)
+				if (root_r_optimize$objective < 1e-4) {
+					root_r[i] = root_r_optimize$minimum
 				} else {
-					fr_upper = fr(3)
-					upper = 3; 
-					while (is.nan(fr_upper)) {
-						upper = upper/2
-						fr_upper = fr(upper)
-					}
-					if (fr_upper < 0) {
-						root_r[i] = Inf
+					if (mean(U_full_insurance) - mean(U_drop[[i + 1]]) > 0) {
+						root_r[i] = -4
 					} else {
-						root_r[i] = uniroot(fr, c(0, upper))$root
+						root_r[i] = 4
 					}
-				} 
+
+				}
 			}
 			root_r_vec[j] = max(root_r, na.rm=TRUE)
-			prob_full_insured[j] = ifelse(root_r_vec[j] == 0, 1, (1 - pnorm(root_r_vec[j], mean = X_hh %*% param$beta_r, sd = exp(param$sigma_r)))/(1 - pnorm(0, mean=X_hh %*% param$beta_r, sd = exp(param$sigma_r))))
+			# prob_full_insured[j] = ifelse(root_r_vec[j] == 0, 1, (1 - pnorm(root_r_vec[j], mean = X_hh %*% param$beta_r, sd = exp(param$sigma_r)))/(1 - pnorm(0, mean=X_hh %*% param$beta_r, sd = exp(param$sigma_r))))
+			prob_full_insured[j] = 1 - pnorm(root_r_vec[j], mean = X_hh %*% param$beta_r, sd = exp(param$sigma_r))
 		}
 	}
 
-	
 
 	if (data_hh_i$HHsize_s[1] > 0) {
 		output = list(); 
