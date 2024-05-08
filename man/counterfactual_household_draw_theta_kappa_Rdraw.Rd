@@ -54,7 +54,7 @@ is only conducted once, and there is no integration over thetabar. Also, the ins
 all possible bundles.
 }
 \examples{
-counterfactual_household_draw_theta_kappa_Rdraw(3, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample, u_lowerbar = -10, policy_mat_hh = policy_mat[[3]], seed_number = 1)
+print('nothing')
 
 
 }
