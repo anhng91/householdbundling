@@ -829,6 +829,7 @@ identify_theta = function(data_set, param) {
 
 	names_input_vec = c('sigma_thetabar','mean_beta_theta', 'mean_beta_theta_ind')
 	size_input_vec = c(1, HHsize, HHsize)
+	halton_mat_list$individual_factor = qnorm(halton_mat[,1:HHsize]) %>% matrix(ncol = HHsize);
 
 	transform_size_input_vec = function(input_vec) {
 		cumsum_size_input_vec = cumsum(size_input_vec)
@@ -861,17 +862,17 @@ identify_theta = function(data_set, param) {
 	theta = data_hh_i$tot_cost_normalized;
 	theta_pos_index = which(theta > 0);
 
+	s_thetabar = exp(param$sigma_thetabar); 
+	s_theta = exp(param$sigma_theta); 
+
+	theta_bar = matrix(NA, nrow = halton_mat %>% nrow, ncol = HHsize)
+
 	inner_f = function(input_vec) {
-		input_vec_list = transform_size_input_vec(input_vec)
-		variance_matrix = diag(exp(2 * input_vec_list$sigma_thetabar), HHsize) + input_vec_list$mean_beta_theta_ind %*% t(input_vec_list$mean_beta_theta_ind);
-		if (nrow(variance_matrix) != ncol(variance_matrix)) {
-			stop('variance matrix dimension is incorrect')
+		for (i in 1:HHsize) {
+			theta_bar[, i] = halton_mat_list$individual_factor[,i] * s_thetabar + halton_mat_list$household_random_factor * (X_ind[i,] %*% param$beta_theta_ind) + t(c(X_ind[i,], data_hh_i$Year[i] == 2004, data_hh_i$Year[i] == 2006, data_hh_i$Year[i] == 2010, data_hh_i$Year[i] == 2012)) %*% param$beta_theta; 
 		}
-		if (length(theta_pos_index) == 1) {
-			return(-log(dnorm(log(theta[theta_pos_index]), mean=input_vec_list$mean_beta_theta[theta_pos_index], sd = sqrt(variance_matrix[theta_pos_index, theta_pos_index])) + 1e-20))
-		} else {
-			return(-log(mvtnorm::dmvnorm(log(theta[theta_pos_index]), mean = input_vec_list$mean_beta_theta[theta_pos_index], sigma = variance_matrix[theta_pos_index, theta_pos_index]) + 1e-20))
-		}
+		likelihood = -log(apply(theta_bar, 1, function(x) prod(dnorm(theta[theta_pos_index], mean = x[theta_pos_index], sd = s_theta)/(1 - pnorm(0, mean=x[theta_pos_index], sd=s_theta)))) %>% colMeans + 1e-2)
+		return(likelihood)
 		
 	}
 
