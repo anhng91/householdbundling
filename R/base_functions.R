@@ -795,7 +795,8 @@ grad_llh_xi = function(beta, data) {
 #'
 #' @param data_set A list produced by household_draw_theta_kappa_Rdraw
 #' @param param This is a list, each element is a coefficient (i.e., a vector) of a preference parameter (beta_gamma, beta_omega, beta_delta, beta_theta, beta_theta_ind) and the standard deviations of the unobserved heterogeneity (sigma_gamma, sigma_omega, sigma_delta, sigma_theta, sigma_thetabar)
-#'
+#' @param n_draw_halton number of halton draws
+#' 
 #' @return a list. The first element is the LLH, the second element is the derivative with respect to beta_theta, beta_theta_ind, and sigma_thetabar
 #' 
 #' @export
@@ -804,7 +805,7 @@ grad_llh_xi = function(beta, data) {
 #' identify_theta(sample_data_and_parameter[[2]], sample_data_and_parameter[[1]])
 #'
 #' 
-identify_theta = function(data_set, param) {
+identify_theta = function(data_set, param, n_draw_halton = 1000) {
 	tol = 1e-3;
 	oop_0_const = 1e-20;
 
@@ -829,7 +830,10 @@ identify_theta = function(data_set, param) {
 
 	names_input_vec = c('sigma_thetabar','mean_beta_theta', 'mean_beta_theta_ind')
 	size_input_vec = c(1, HHsize, HHsize)
+	halton_mat_list = list()
+	halton_mat = randtoolbox::halton(n_draw_halton, HHsize * 6 + 2)
 	halton_mat_list$individual_factor = qnorm(halton_mat[,1:HHsize]) %>% matrix(ncol = HHsize);
+	halton_mat_list$household_random_factor = qnorm(halton_mat[,HHsize * 6 + 1]) ; 
 
 	transform_size_input_vec = function(input_vec) {
 		cumsum_size_input_vec = cumsum(size_input_vec)
@@ -871,7 +875,7 @@ identify_theta = function(data_set, param) {
 		for (i in 1:HHsize) {
 			theta_bar[, i] = halton_mat_list$individual_factor[,i] * s_thetabar + halton_mat_list$household_random_factor * (X_ind[i,] %*% param$beta_theta_ind) + t(c(X_ind[i,], data_hh_i$Year[i] == 2004, data_hh_i$Year[i] == 2006, data_hh_i$Year[i] == 2010, data_hh_i$Year[i] == 2012)) %*% param$beta_theta; 
 		}
-		likelihood = -log(apply(theta_bar, 1, function(x) prod(dnorm(theta[theta_pos_index], mean = x[theta_pos_index], sd = s_theta)/(1 - pnorm(0, mean=x[theta_pos_index], sd=s_theta)))) %>% colMeans + 1e-2)
+		likelihood = -log(apply(theta_bar, 1, function(x) prod(dnorm(theta[theta_pos_index], mean = x[theta_pos_index], sd = s_theta)/(1 - pnorm(0, mean=x[theta_pos_index], sd=s_theta)))) %>% matrix(ncol = HHsize) %>% colMeans + 1e-2)
 		return(likelihood)
 		
 	}

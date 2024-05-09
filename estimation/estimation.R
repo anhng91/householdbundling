@@ -99,6 +99,7 @@ xi_parameters = optim(rep(0, 2 * ncol(var_ind(data_hh_list[[1]]))), fn = functio
 
 param_trial = transform_param(return_index=TRUE, init=TRUE);
 transform_param_trial = transform_param(param_trial, return_index=TRUE)
+x_transform = transform_param_trial
 
 var_list = c('sigma_thetabar', 'beta_theta', 'beta_theta_ind');
 active_index = unlist(transform_param_trial[[2]][var_list]);
@@ -303,6 +304,26 @@ estimate_r_thetabar = optimize(function(x) {
     iteration <<- iteration + 1; 
     print(paste0('at iteration = ', iteration))
     output[[2]][length(x)] = output[[2]][length(x)] * exp(x[length(x)])/(1 + exp(x[length(x)]))^2
+
+    # computing moment using realized expenses
+    if (Sys.info()[['sysname']] == 'Windows') {
+      clusterExport(cl, 'x_transform',envir=environment())
+      moment_realized_expense = parLapply(cl, data_hh_list_theta,function(mini_data) {
+        output = tryCatch(identify_theta(mini_data, x_transform[[1]], n_draw_halton = n_draw_halton),error=function(e) e)
+        return(output)
+      })
+    } else {
+      moment_realized_expense = mclapply(data_hh_list_theta, function(mini_data) tryCatch(identify_theta(mini_data, x_transform[[1]], n_draw_halton = n_draw_halton), error=function(e) e), mc.cores=numcores)
+    }
+    
+    moment_realized_expense_val = do.call('c', lapply(moment_realized_expense, function(x) x[[1]])) %>% mean
+    moment_realized_expense_deriv = rep(0, length(param_trial));
+    moment_realized_expense_deriv[x_transform[[2]]$beta_theta] = do.call('rbind', lapply(moment_realized_expense, function(x) x[[2]]$beta_theta)) %>% colMeans
+    moment_realized_expense_deriv[x_transform[[2]]$beta_theta_ind] = do.call('rbind', lapply(moment_realized_expense, function(x) x[[2]]$beta_theta_ind)) %>% colMeans
+    moment_realized_expense_deriv[x_transform[[2]]$sigma_thetabar] = do.call('c', lapply(moment_realized_expense, function(x) x[[2]]$sigma_thetabar)) %>% mean
+
+    output[[1]] = output[[1]] + moment_realized_expense_val
+    output[[2]] = output[[2]] + moment_realized_expense_deriv[active_index]
     return(output)
   }, control=list(maxit=1e2), method='BFGS')
 

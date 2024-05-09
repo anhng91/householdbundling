@@ -4,12 +4,14 @@
 \alias{identify_theta}
 \title{Compute the LLH of medical expenditure.}
 \usage{
-identify_theta(data_set, param)
+identify_theta(data_set, param, n_draw_halton = 1000)
 }
 \arguments{
 \item{data_set}{A list produced by household_draw_theta_kappa_Rdraw}
 
 \item{param}{This is a list, each element is a coefficient (i.e., a vector) of a preference parameter (beta_gamma, beta_omega, beta_delta, beta_theta, beta_theta_ind) and the standard deviations of the unobserved heterogeneity (sigma_gamma, sigma_omega, sigma_delta, sigma_theta, sigma_thetabar)}
+
+\item{n_draw_halton}{number of halton draws}
 }
 \value{
 a list. The first element is the LLH, the second element is the derivative with respect to beta_theta, beta_theta_ind, and sigma_thetabar
