@@ -1009,7 +1009,7 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 	}
 	halton_mat_list$gamma = (halton_mat[,(3 * HHsize + 1):(4 * HHsize)]) %>% matrix(ncol = HHsize);
 	halton_mat_list$delta = (halton_mat[,(4 * HHsize + 1):(5 * HHsize)]) %>% matrix(ncol = HHsize);
-	halton_mat_list$theta = qnorm(apply(halton_mat[,(5 * HHsize + 1):(6 * HHsize)] %>% matrix(ncol=HHsize), 2, function(col) lapply(col, function(row_element) min(row_element, cap_theta_draw_normalized)) %>% unlist())) %>% matrix(ncol = HHsize);
+	halton_mat_list$theta = qnorm(halton_mat[,(5 * HHsize + 1):(6 * HHsize)] %>% matrix(ncol=HHsize));
 	beta_gamma = X_ind %*% param$beta_gamma; 
 	s_gamma = exp(param$sigma_gamma); 
 	gamma = NULL

@@ -81,10 +81,13 @@ message('bootstrapping indices')
 set.seed(job_index);
 sample_index = sample(1:length(data_hh_list), length(data_hh_list), replace=TRUE)
 sample_r_theta = Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, function(x) ifelse(nrow(data_hh_list[[x]]) <= 4, x, NA)))))]
-sample_r_theta = sample(sample_r_theta, length(sample_r_theta), replace=TRUE)
+# sample_r_theta = sample(sample_r_theta, length(sample_r_theta), replace=TRUE)
+sample_r_theta = sample(sample_r_theta, 1000, replace=TRUE)
+sample_identify_pref = sample(sample_identify_pref, 500,  replace=TRUE)
+sample_identify_theta = sample(sample_identify_theta, 500,  replace=TRUE)
 # sample_r_theta = sample(Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, function(x) ifelse(nrow(data_hh_list[[x]]) <= 4, x, NA)))))], 5000)
-sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
-sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
+# sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
+# sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 
 
 message('merging household frames')
@@ -169,6 +172,10 @@ X_hh_theta_r = do.call('rbind',lapply(sample_r_theta, function(output_hh_index) 
 
 n_involuntary = do.call('c', lapply(sample_r_theta, function(output_hh_index) data_hh_list[[output_hh_index]]$N_com[1] + data_hh_list[[output_hh_index]]$N_bef[1] + data_hh_list[[output_hh_index]]$N_std_w_ins))
 
+n_halton_at_r = 100; 
+
+param_trial[x_transform[[2]]$beta_theta[1]] = -6
+
 estimate_r_thetabar = optimize(function(x) {
   param_trial[transform_param_trial[[2]]$s_theta] = x; 
   transform_param_trial = transform_param(param_trial, return_index=TRUE);
@@ -187,6 +194,7 @@ estimate_r_thetabar = optimize(function(x) {
   max_sigma_thetabar = sd(data$M_expense) * 2; 
 
   x_transform = transform_param(param_trial, return_index=TRUE)
+
 
   aggregate_moment_pref = function(x_transform) {
     if (Sys.info()[['sysname']] == 'Windows') {
@@ -317,6 +325,7 @@ estimate_r_thetabar = optimize(function(x) {
     }
     
     moment_realized_expense_val = do.call('c', lapply(moment_realized_expense, function(x) x[[1]])) %>% mean
+    print(paste0('moment from theta = ', moment_realized_expense_val))
     moment_realized_expense_deriv = rep(0, length(param_trial));
     moment_realized_expense_deriv[x_transform[[2]]$beta_theta] = do.call('rbind', lapply(moment_realized_expense, function(x) x[[2]]$beta_theta)) %>% colMeans
     moment_realized_expense_deriv[x_transform[[2]]$beta_theta_ind] = do.call('rbind', lapply(moment_realized_expense, function(x) x[[2]]$beta_theta_ind)) %>% colMeans
@@ -341,7 +350,7 @@ estimate_r_thetabar = optimize(function(x) {
   x_new = param_trial; 
   x_new[x_transform[[2]]$sigma_theta] = 0;
   x_transform = transform_param(x_new, return_index=TRUE)
-  n_halton_at_r = 100; 
+  
   if (Sys.info()[['sysname']] == 'Windows') {
     x_new = param_trial; 
     x_new[x_transform[[2]]$sigma_theta] = 0;
