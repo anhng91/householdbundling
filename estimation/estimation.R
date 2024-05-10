@@ -176,25 +176,12 @@ n_halton_at_r = 100;
 
 param_trial[x_transform[[2]]$beta_theta[1]] = 0
 
-estimate_r_thetabar = optimize(function(x) {
-  param_trial[transform_param_trial[[2]]$s_theta] <<- x; 
+estimate_r_thetabar = optimize(function(x_stheta) {
+  print(paste0('value of sigma theta is ', x_stheta))
+  param_trial[transform_param_trial[[2]]$sigma_theta] <<- x_stheta; 
   transform_param_trial = transform_param(param_trial, return_index=TRUE);
-  if (Sys.info()[['sysname']] == 'Windows') {
-    data_hh_list_pref = parLapply(cl, sample_identify_pref,function(index) {
-      output = tryCatch(household_draw_theta_kappa_Rdraw(hh_index=index, param=transform_param_trial[[1]], n_draw_halton = n_draw_halton, n_draw_gauss = 10, sick_parameters, xi_parameters, short=FALSE),error=function(e) e)
-      return(output)
-    })
-  } else {
-    data_hh_list_pref = mclapply(sample_identify_pref, function(index) tryCatch(household_draw_theta_kappa_Rdraw(hh_index=index, param=transform_param_trial[[1]], n_draw_halton = n_draw_halton, n_draw_gauss = 10, sick_parameters, xi_parameters, short=FALSE), error=function(e) e), mc.cores=numcores)
-  }
-  outer_output = 0; 
-
   var_list = c('beta_delta', 'beta_omega', 'beta_gamma', 'sigma_delta', 'sigma_gamma', 'sigma_omega')
-
-  max_sigma_thetabar = sd(data$M_expense) * 2; 
-
   x_transform = transform_param(param_trial, return_index=TRUE)
-
 
   aggregate_moment_pref = function(x_transform) {
     if (Sys.info()[['sysname']] == 'Windows') {
@@ -282,9 +269,7 @@ estimate_r_thetabar = optimize(function(x) {
     if (max(abs(x)) > 10) {
       return(list(NA, rep(NA, length(active_index))))
     }
-    print('x = '); print(x)
     param_trial[active_index] <<- x 
-    param_trial[x_transform[[2]]$sigma_thetabar] = log(exp(x[length(x)])/(exp(x[length(x)]) + 1) * max_sigma_thetabar)
     message('computing preference moment')
     pref_moment = aggregate_moment_pref(transform_param(param_trial, return_index=TRUE))
     deriv_theta_index = c(x_transform[[2]]$beta_theta[1], x_transform[[2]]$beta_theta_ind[1], x_transform[[2]]$sigma_thetabar)
@@ -304,10 +289,9 @@ estimate_r_thetabar = optimize(function(x) {
       }
     }
     message('computing theta moment')
-    theta_moment = aggregate_moment_pref(transform_param(param_trial, return_index=TRUE))
     output = list()
-    output[[1]] = theta_moment[[1]] + pref_moment[[1]]
-    output[[2]] = theta_moment[[2]] + pref_moment[[2]]
+    output[[1]] =  pref_moment[[1]]
+    output[[2]] =  pref_moment[[2]]
     print(paste0('output here = ',output[[1]]))
     iteration <<- iteration + 1; 
     print(paste0('at iteration = ', iteration))
@@ -334,7 +318,7 @@ estimate_r_thetabar = optimize(function(x) {
     output[[1]] = output[[1]] + moment_realized_expense_val 
     output[[2]] = output[[2]] + moment_realized_expense_deriv[active_index] 
     return(output)
-  }, control=list(maxit=1e2), method='BFGS')
+  }, control=list(maxit=1e1), method='BFGS')
 
   x_transform = transform_param(param_trial, return_index=TRUE)
 
@@ -345,25 +329,7 @@ estimate_r_thetabar = optimize(function(x) {
   save_obj_outside = NULL;
   save_param_outside = NULL; 
 
-
   # some draws will be insensitive to values of sigma_thetabar, so we do not need to simulate over these draws multiple times. 
-  x_new = param_trial; 
-  x_new[x_transform[[2]]$sigma_theta] = 0;
-  x_transform = transform_param(x_new, return_index=TRUE)
-  
-  if (Sys.info()[['sysname']] == 'Windows') {
-    x_new = param_trial; 
-    x_new[x_transform[[2]]$sigma_theta] = 0;
-    x_transform = transform_param(x_new, return_index=TRUE)
-    clusterExport(cl, c('x_transform', 'sick_parameters', 'xi_parameters', 'n_halton_at_r'))
-    moment_eligible_hh_output_upper = parLapply(cl, sample_r_theta, function(mini_data_index) {
-      output = (household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], n_halton_at_r, 10, sick_parameters, xi_parameters, u_lowerbar = -1))
-      return(output)
-    })
-  } else {
-    moment_eligible_hh_output_upper = mclapply(sample_r_theta, function(mini_data_index) tryCatch(household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], n_halton_at_r, 10, sick_parameters, xi_parameters, u_lowerbar = -1), error=function(e) e), mc.cores=numcores)
-  }
-
   x_new = param_trial; 
   x_new[x_transform[[2]]$sigma_theta] = 0;
   x_transform = transform_param(x_new, return_index=TRUE)
@@ -428,7 +394,6 @@ estimate_r_thetabar = optimize(function(x) {
   optim_r = optim(rep(0,8), function(x) fx_r(x), control=list(maxit=1000), method='Nelder-Mead') 
 
   param_trial[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r)] <<- optim_r$par
-  param_trial[x_transform[[2]]$sigma_theta] <<- x; 
   x_transform = transform_param(param_trial,return_index=TRUE); 
 
   output_2 = do.call('c', lapply(moment_eligible_hh_output, function(output_hh) {

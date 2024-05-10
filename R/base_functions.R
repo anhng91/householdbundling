@@ -483,6 +483,11 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 			
 			theta_draw = matrix(do.call('rbind', lapply(1:nrow(halton_mat_list$theta), function(id_row)  qnorm(halton_mat_list$theta[id_row,] * pnorm(-theta_bar[id_row,]/s_theta) + (1 - halton_mat_list$theta[id_row,])) * s_theta + theta_bar[id_row,])), ncol=HHsize)
 
+			theta_draw = apply(theta_draw, 2, function(x) {
+				x[which(is.na(x) | is.infinite(x))] = 0
+				return(x)
+			}) 
+
 			random_xi_draws = lapply(halton_mat_list$coverage[,i], function(x) ifelse(x <= p_0[i], 0, ifelse(x <= p_0[i] + p_1[i], 1, (x - p_0[i] - p_1[i])/(1 - p_0[i] - p_1[i])))) %>% unlist()
 			kappa_draw[[1]][,i] = (lapply(1:nrow(theta_draw), function(j) policy_mat_hh_index[[1]][[1]][max(which((theta_draw[j,i] * random_xi_draws[j]) >= policy_mat_hh_index[[1]][[2]][,i])),i]) %>% unlist()) * random_xi_draws + 1 - random_xi_draws
 		}
@@ -551,8 +556,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 				output[which(output < 0)] = 0
 				return(output)
 			})), ncol=HHsize) * halton_mat_list$sick
-			theta_draw[is.na(theta_draw)] = 0
-			theta_draw[is.infinite(theta_draw)] = 0
+			theta_draw = apply(theta_draw, 2, function(x) x[which(is.na(x) | is.infinite(x))] = 0) 
 			for (i in 1:HHsize) {
 				kappa_draw[[1]][,i] = (lapply(1:nrow(theta_draw), function(j) policy_mat_hh_index[[1]][[1]][max(which((theta_draw[j,i] * random_xi_draws[j,i]) >= policy_mat_hh_index[[1]][[2]][,i])),i]) %>% unlist()) * random_xi_draws[,i] + 1 - random_xi_draws[,i]
 			}
@@ -875,7 +879,11 @@ identify_theta = function(data_set, param, n_draw_halton = 1000) {
 		for (i in 1:HHsize) {
 			theta_bar[, i] = halton_mat_list$individual_factor[,i] * s_thetabar + halton_mat_list$household_random_factor * (X_ind[i,] %*% param$beta_theta_ind) + t(c(X_ind[i,], data_hh_i$Year[i] == 2004, data_hh_i$Year[i] == 2006, data_hh_i$Year[i] == 2010, data_hh_i$Year[i] == 2012)) %*% param$beta_theta; 
 		}
+		print(summary(theta_bar))
+		print(theta)
+		print(apply(theta_bar, 1, function(x) prod(dnorm(theta[theta_pos_index], mean = x[theta_pos_index], sd = s_theta)/(1 - pnorm(0, mean=x[theta_pos_index], sd=s_theta)))) %>% summary)
 		likelihood = -log(apply(theta_bar, 1, function(x) prod(dnorm(theta[theta_pos_index], mean = x[theta_pos_index], sd = s_theta)/(1 - pnorm(0, mean=x[theta_pos_index], sd=s_theta)))) %>% mean + 1e-10)
+		likelihood = ifelse(is.infinite(likelihood), -log(1e-10), likelihood) 
 		return(likelihood)
 		
 	}
