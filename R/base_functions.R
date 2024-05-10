@@ -876,7 +876,7 @@ identify_theta = function(data_set, param, n_draw_halton = 1000) {
 	theta_bar = matrix(NA, nrow = halton_mat %>% nrow, ncol = HHsize)
 
 	inner_f = function(input_vec) {
-		input_vec_transformed = transform_input_vec(input_vec)
+		input_vec_transformed = transform_size_input_vec(input_vec)
 		for (i in 1:HHsize) {
 			theta_bar[, i] = halton_mat_list$individual_factor[,i] * exp(input_vec_transformed$sigma_thetabar) + input_vec_transformed$mean_beta_theta_ind + input_vec_transformed$mean_beta_theta; 
 		}
