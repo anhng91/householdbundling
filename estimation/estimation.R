@@ -82,9 +82,9 @@ set.seed(job_index);
 sample_index = sample(1:length(data_hh_list), length(data_hh_list), replace=TRUE)
 sample_r_theta = Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, function(x) ifelse(nrow(data_hh_list[[x]]) <= 4, x, NA)))))]
 # sample_r_theta = sample(sample_r_theta, length(sample_r_theta), replace=TRUE)
-sample_r_theta = sample(sample_r_theta, 1000, replace=TRUE)
-sample_identify_pref = sample(sample_identify_pref, 500,  replace=TRUE)
-sample_identify_theta = sample(sample_identify_theta, 500,  replace=TRUE)
+sample_r_theta = sample(sample_r_theta, 100, replace=TRUE)
+sample_identify_pref = sample(sample_identify_pref, 50,  replace=TRUE)
+sample_identify_theta = sample(sample_identify_theta, 50,  replace=TRUE)
 # sample_r_theta = sample(Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, function(x) ifelse(nrow(data_hh_list[[x]]) <= 4, x, NA)))))], 5000)
 # sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
 # sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
@@ -174,10 +174,10 @@ n_involuntary = do.call('c', lapply(sample_r_theta, function(output_hh_index) da
 
 n_halton_at_r = 100; 
 
-param_trial[x_transform[[2]]$beta_theta[1]] = -6
+param_trial[x_transform[[2]]$beta_theta[1]] = 0
 
 estimate_r_thetabar = optimize(function(x) {
-  param_trial[transform_param_trial[[2]]$s_theta] = x; 
+  param_trial[transform_param_trial[[2]]$s_theta] <<- x; 
   transform_param_trial = transform_param(param_trial, return_index=TRUE);
   if (Sys.info()[['sysname']] == 'Windows') {
     data_hh_list_pref = parLapply(cl, sample_identify_pref,function(index) {
@@ -306,8 +306,8 @@ estimate_r_thetabar = optimize(function(x) {
     message('computing theta moment')
     theta_moment = aggregate_moment_pref(transform_param(param_trial, return_index=TRUE))
     output = list()
-    output[[1]] = theta_moment[[1]] + pref_moment[[1]]*1e4
-    output[[2]] = theta_moment[[2]] + pref_moment[[2]]*1e4
+    output[[1]] = theta_moment[[1]] + pref_moment[[1]]
+    output[[2]] = theta_moment[[2]] + pref_moment[[2]]
     print(paste0('output here = ',output[[1]]))
     iteration <<- iteration + 1; 
     print(paste0('at iteration = ', iteration))
@@ -331,8 +331,8 @@ estimate_r_thetabar = optimize(function(x) {
     moment_realized_expense_deriv[x_transform[[2]]$beta_theta_ind] = do.call('rbind', lapply(moment_realized_expense, function(x) x[[2]]$beta_theta_ind)) %>% colMeans
     moment_realized_expense_deriv[x_transform[[2]]$sigma_thetabar] = do.call('c', lapply(moment_realized_expense, function(x) x[[2]]$sigma_thetabar)) %>% mean
 
-    output[[1]] = output[[1]] + moment_realized_expense_val
-    output[[2]] = output[[2]] + moment_realized_expense_deriv[active_index]
+    output[[1]] = output[[1]] + moment_realized_expense_val 
+    output[[2]] = output[[2]] + moment_realized_expense_deriv[active_index] 
     return(output)
   }, control=list(maxit=1e2), method='BFGS')
 
@@ -406,13 +406,13 @@ estimate_r_thetabar = optimize(function(x) {
     prob[which(root_r < 0)] = 0
     prob[which(root_r >= 0)] = (prob[which(root_r >= 0)] -pnorm(- mean_vec[which(root_r >= 0)]/sd)) /(1 - pnorm(- mean_vec[which(root_r >= 0)]/sd))
 
-    output = sum((full_insurance_indicator_nona - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * mat_Y_rtheta[,1]^2) + 
-      sum((full_insurance_indicator_nona - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * mean_theta_R^2) +
-      sum((full_insurance_indicator_nona - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * min_theta_R^2) + 
-      sum((full_insurance_indicator_nona - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * max_theta_R^2) + 
-      sum((full_insurance_indicator_nona - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * n_involuntary^2)
+    output = sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * mat_Y_rtheta^2) + 
+      sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * mean_theta_R^2) +
+      sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * min_theta_R^2) + 
+      sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * max_theta_R^2) + 
+      sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * n_involuntary^2)
 
-    print('actual insurance = '); print(summary(full_insurance_indicator_nona))
+    print('actual insurance = '); print(summary(full_insurance_indicator))
     print('predicted insurance '); print(summary(matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))
     print('x_r = '); print(x_r);
     print('output = '); print(output);
@@ -445,7 +445,7 @@ estimate_r_thetabar = optimize(function(x) {
   print(paste0('optim_r')); print(optim_r$par)
   print('------')
   return(output_2)
-}, c(0,exp(x_transform[[1]]$sigma_thetabar))) 
+}, c(-4,1)) 
 
 param_trial[x_transform[[2]]$sigma_theta] <- estimate_r_thetabar$minimum
 
