@@ -876,13 +876,14 @@ identify_theta = function(data_set, param, n_draw_halton = 1000) {
 	theta_bar = matrix(NA, nrow = halton_mat %>% nrow, ncol = HHsize)
 
 	inner_f = function(input_vec) {
+		input_vec_transformed = transform_input_vec(input_vec)
 		for (i in 1:HHsize) {
-			theta_bar[, i] = halton_mat_list$individual_factor[,i] * s_thetabar + halton_mat_list$household_random_factor * (X_ind[i,] %*% param$beta_theta_ind) + t(c(X_ind[i,], data_hh_i$Year[i] == 2004, data_hh_i$Year[i] == 2006, data_hh_i$Year[i] == 2010, data_hh_i$Year[i] == 2012)) %*% param$beta_theta; 
+			theta_bar[, i] = halton_mat_list$individual_factor[,i] * exp(input_vec_transformed$sigma_thetabar) + input_vec_transformed$mean_beta_theta_ind + input_vec_transformed$mean_beta_theta; 
 		}
 		print(summary(theta_bar))
 		print(theta)
-		print(apply(theta_bar, 1, function(x) prod(dnorm(theta[theta_pos_index], mean = x[theta_pos_index], sd = s_theta)/(1 - pnorm(0, mean=x[theta_pos_index], sd=s_theta)))) %>% summary)
-		likelihood = -log(apply(theta_bar, 1, function(x) prod(dnorm(theta[theta_pos_index], mean = x[theta_pos_index], sd = s_theta)/(1 - pnorm(0, mean=x[theta_pos_index], sd=s_theta)))) %>% mean + 1e-10)
+		print(apply(theta_bar, 1, function(x) prod(dnorm(theta[theta_pos_index], mean = x[theta_pos_index], sd = exp(input_vec_transformed$sigma_theta))/(1 - pnorm(0, mean=x[theta_pos_index], sd=exp(input_vec_transformed$sigma_theta))))) %>% summary)
+		likelihood = -log(apply(theta_bar, 1, function(x) prod(dnorm(theta[theta_pos_index], mean = x[theta_pos_index], sd = exp(input_vec_transformed$sigma_theta))/(1 - pnorm(0, mean=x[theta_pos_index], sd=exp(input_vec_transformed$sigma_theta))))) %>% mean + 1e-10)
 		likelihood = ifelse(is.infinite(likelihood), -log(1e-10), likelihood) 
 		return(likelihood)
 		
