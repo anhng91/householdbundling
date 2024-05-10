@@ -880,9 +880,6 @@ identify_theta = function(data_set, param, n_draw_halton = 1000) {
 		for (i in 1:HHsize) {
 			theta_bar[, i] = halton_mat_list$individual_factor[,i] * exp(input_vec_transformed$sigma_thetabar) + input_vec_transformed$mean_beta_theta_ind + input_vec_transformed$mean_beta_theta; 
 		}
-		print(summary(theta_bar))
-		print(theta)
-		print(apply(theta_bar, 1, function(x) prod(dnorm(theta[theta_pos_index], mean = x[theta_pos_index], sd = exp(input_vec_transformed$sigma_theta))/(1 - pnorm(0, mean=x[theta_pos_index], sd=exp(input_vec_transformed$sigma_theta))))) %>% summary)
 		likelihood = -log(apply(theta_bar, 1, function(x) prod(dnorm(theta[theta_pos_index], mean = x[theta_pos_index], sd = exp(input_vec_transformed$sigma_theta))/(1 - pnorm(0, mean=x[theta_pos_index], sd=exp(input_vec_transformed$sigma_theta))))) %>% mean + 1e-10)
 		likelihood = ifelse(is.infinite(likelihood), -log(1e-10), likelihood) 
 		return(likelihood)
