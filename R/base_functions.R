@@ -478,15 +478,19 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 		s_theta = exp(param$sigma_theta); 
 
 		theta_bar = matrix(NA, nrow = halton_mat %>% nrow, ncol = HHsize)
+		theta_draw = halton_mat_list$theta * 0; 
+		theta_draw = theta_draw %>% matrix(ncol=HHsize)
 		for (i in 1:HHsize) {
 			theta_bar[, i] = halton_mat_list$individual_factor[,i] * s_thetabar + halton_mat_list$household_random_factor * (X_ind[i,] %*% param$beta_theta_ind) + t(c(X_ind[i,], data_hh_i$Year[i] == 2004, data_hh_i$Year[i] == 2006, data_hh_i$Year[i] == 2010, data_hh_i$Year[i] == 2012)) %*% param$beta_theta; 
 			
-			theta_draw = matrix(do.call('rbind', lapply(1:nrow(halton_mat_list$theta), function(id_row)  qnorm(halton_mat_list$theta[id_row,] * pnorm(-theta_bar[id_row,]/s_theta) + (1 - halton_mat_list$theta[id_row,])) * s_theta + theta_bar[id_row,])), ncol=HHsize)
+			theta_draw[, i] = qnorm(halton_mat_list$theta[, i] * pnorm(-theta_bar[, i]/s_theta) + (1 - halton_mat_list$theta[, i])) * s_theta + theta_bar[, i]
 
-			theta_draw = matrix(apply(theta_draw, 2, function(x) {
+			theta_draw[, i] = lapply(theta_draw[, i], function(x) {
 				x[which(is.na(x) | is.infinite(x))] = 0
 				return(x)
-			}), ncol=HHsize)
+			}) %>% unlist()
+
+			theta_draw[, i] = theta_draw[, i] * halton_mat_list$sick
 
 			random_xi_draws = lapply(halton_mat_list$coverage[,i], function(x) ifelse(x <= p_0[i], 0, ifelse(x <= p_0[i] + p_1[i], 1, (x - p_0[i] - p_1[i])/(1 - p_0[i] - p_1[i])))) %>% unlist()
 			kappa_draw[[1]][,i] = (lapply(1:nrow(theta_draw), function(j) policy_mat_hh_index[[1]][[1]][max(which((theta_draw[j,i] * random_xi_draws[j]) >= policy_mat_hh_index[[1]][[2]][,i])),i]) %>% unlist()) * random_xi_draws + 1 - random_xi_draws
@@ -553,7 +557,6 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 			# Full insurance: 
 			theta_draw = matrix(t(apply(halton_mat_list$theta, 1, function(x) {
 				output = qnorm(x * pnorm(-theta_bar[j,]/s_theta) + (1 - x)) * s_theta + theta_bar[j,] 
-				output[which(output < 0)] = 0
 				return(output)
 			})), ncol=HHsize) * halton_mat_list$sick
 
@@ -561,7 +564,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 				x[which(is.na(x) | is.infinite(x))] = 0
 				return(x)
 			}), ncol=HHsize)
-			
+
 			for (i in 1:HHsize) {
 				kappa_draw[[1]][,i] = (lapply(1:nrow(theta_draw), function(j) policy_mat_hh_index[[1]][[1]][max(which((theta_draw[j,i] * random_xi_draws[j,i]) >= policy_mat_hh_index[[1]][[2]][,i])),i]) %>% unlist()) * random_xi_draws[,i] + 1 - random_xi_draws[,i]
 			}

@@ -177,11 +177,11 @@ n_halton_at_r = 100;
 param_trial[x_transform[[2]]$beta_theta[1]] = 0
 
 estimate_r_thetabar = optimize(function(x_stheta) {
-  print(paste0('value of sigma theta is ', x_stheta))
   param_trial[transform_param_trial[[2]]$sigma_theta] <<- x_stheta; 
   transform_param_trial = transform_param(param_trial, return_index=TRUE);
   var_list = c('beta_delta', 'beta_omega', 'beta_gamma', 'sigma_delta', 'sigma_gamma', 'sigma_omega')
   x_transform = transform_param(param_trial, return_index=TRUE)
+  print(x_transform[[1]])
 
   aggregate_moment_pref = function(x_transform) {
     if (Sys.info()[['sysname']] == 'Windows') {
@@ -261,20 +261,53 @@ estimate_r_thetabar = optimize(function(x_stheta) {
     output[[3]] = do.call('cbind', output[[3]])
     return(output)
   }
+
+  aggregate_moment_theta = function(x_transform) {
+    # computing moment using realized expenses
+    if (Sys.info()[['sysname']] == 'Windows') {
+      clusterExport(cl, 'x_transform',envir=environment())
+      moment_realized_expense = parLapply(cl, data_hh_list_theta,function(mini_data) {
+        output = tryCatch(identify_theta(mini_data, x_transform[[1]], n_draw_halton = n_draw_halton),error=function(e) e)
+        return(output)
+      })
+    } else {
+      moment_realized_expense = mclapply(data_hh_list_theta, function(mini_data) tryCatch(identify_theta(mini_data, x_transform[[1]], n_draw_halton = n_draw_halton), error=function(e) e), mc.cores=numcores)
+    }
+    
+    moment_realized_expense_val = do.call('c', lapply(moment_realized_expense, function(x) x[[1]])) %>% mean
+    print(paste0('moment from theta = ', moment_realized_expense_val))
+    moment_realized_expense_deriv = rep(0, length(param_trial));
+    moment_realized_expense_deriv[x_transform[[2]]$beta_theta] = do.call('rbind', lapply(moment_realized_expense, function(x) x[[2]]$beta_theta)) %>% colMeans
+    moment_realized_expense_deriv[x_transform[[2]]$beta_theta_ind] = do.call('rbind', lapply(moment_realized_expense, function(x) x[[2]]$beta_theta_ind)) %>% colMeans
+    moment_realized_expense_deriv[x_transform[[2]]$sigma_thetabar] = do.call('c', lapply(moment_realized_expense, function(x) x[[2]]$sigma_thetabar)) %>% mean
+
+    return(list(moment_realized_expense_val, moment_realized_expense_deriv))
+  }
+
   active_index = x_transform[[2]][c(var_list, 'beta_theta', 'beta_theta_ind', 'sigma_thetabar')] %>% unlist()
   tol = 1e-4
 
   iteration = 1; 
-  optim_pref_theta = splitfngr::optim_share(param_trial[active_index], function(x) {
-    if (max(abs(x)) > 10) {
+
+  init_param = rep(0, length(active_index))
+  param_trial[active_index] <<- init_param
+  init_pref = aggregate_moment_pref(transform_param(param_trial, return_index=TRUE))
+  init_theta = aggregate_moment_theta(transform_param(param_trial, return_index=TRUE))
+
+  if (is.na(init_pref[[1]]) | is.nan(init_pref[[1]]) | is.na(init_theta[[1]]) | is.nan(init_theta[[1]])) {
+    return(NA)
+  }
+  optim_pref_theta = splitfngr::optim_share(init_param, function(x_pref_theta) {
+    if (max(abs(x_pref_theta)) > 10) {
       return(list(NA, rep(NA, length(active_index))))
     }
-    param_trial[active_index] <<- x 
+    param_trial[active_index] <<- x_pref_theta 
+    x_transform = transform_param(param_trial, return_index = TRUE)
     message('computing preference moment')
     pref_moment = aggregate_moment_pref(transform_param(param_trial, return_index=TRUE))
     deriv_theta_index = c(x_transform[[2]]$beta_theta[1], x_transform[[2]]$beta_theta_ind[1], x_transform[[2]]$sigma_thetabar)
     if (is.na(pref_moment[[1]])) {
-      return(list(NA, rep(NA, length(x))))
+      return(list(NA, rep(NA, length(x_pref_theta))))
     }
     message('computing preference moment derivative')
     for (i in deriv_theta_index) {
@@ -295,33 +328,16 @@ estimate_r_thetabar = optimize(function(x_stheta) {
     print(paste0('output here = ',output[[1]]))
     iteration <<- iteration + 1; 
     print(paste0('at iteration = ', iteration))
-    output[[2]][length(x)] = output[[2]][length(x)] * exp(x[length(x)])/(1 + exp(x[length(x)]))^2
+    output[[2]][length(x_pref_theta)] = output[[2]][length(x_pref_theta)] * exp(x_pref_theta[length(x_pref_theta)])/(1 + exp(x_pref_theta[length(x_pref_theta)]))^2
 
-    # computing moment using realized expenses
-    if (Sys.info()[['sysname']] == 'Windows') {
-      clusterExport(cl, 'x_transform',envir=environment())
-      moment_realized_expense = parLapply(cl, data_hh_list_theta,function(mini_data) {
-        output = tryCatch(identify_theta(mini_data, x_transform[[1]], n_draw_halton = n_draw_halton),error=function(e) e)
-        return(output)
-      })
-    } else {
-      moment_realized_expense = mclapply(data_hh_list_theta, function(mini_data) tryCatch(identify_theta(mini_data, x_transform[[1]], n_draw_halton = n_draw_halton), error=function(e) e), mc.cores=numcores)
-    }
-    
-    moment_realized_expense_val = do.call('c', lapply(moment_realized_expense, function(x) x[[1]])) %>% mean
-    print(paste0('moment from theta = ', moment_realized_expense_val))
-    moment_realized_expense_deriv = rep(0, length(param_trial));
-    moment_realized_expense_deriv[x_transform[[2]]$beta_theta] = do.call('rbind', lapply(moment_realized_expense, function(x) x[[2]]$beta_theta)) %>% colMeans
-    moment_realized_expense_deriv[x_transform[[2]]$beta_theta_ind] = do.call('rbind', lapply(moment_realized_expense, function(x) x[[2]]$beta_theta_ind)) %>% colMeans
-    moment_realized_expense_deriv[x_transform[[2]]$sigma_thetabar] = do.call('c', lapply(moment_realized_expense, function(x) x[[2]]$sigma_thetabar)) %>% mean
-
-    output[[1]] = output[[1]] + moment_realized_expense_val 
-    output[[2]] = output[[2]] + moment_realized_expense_deriv[active_index] 
+    output_theta = aggregate_moment_theta(x_transform)
+    output[[1]] = output[[1]] + output_theta[[1]] 
+    output[[2]] = output[[2]] + output_theta[[2]][active_index] 
     return(output)
   }, control=list(maxit=1e1), method='BFGS')
 
   param_trial[active_index] <<- optim_pref_theta$par
-  
+
   x_transform = transform_param(param_trial, return_index=TRUE)
 
   active_index = c(x_transform[[2]]$sigma_r,  x_transform[[2]]$sigma_theta, x_transform[[2]]$beta_r); 
@@ -333,7 +349,6 @@ estimate_r_thetabar = optimize(function(x_stheta) {
 
   # some draws will be insensitive to values of sigma_thetabar, so we do not need to simulate over these draws multiple times. 
   x_new = param_trial; 
-  x_new[x_transform[[2]]$sigma_theta] = 0;
   x_transform = transform_param(x_new, return_index=TRUE)
 
 
@@ -344,12 +359,6 @@ estimate_r_thetabar = optimize(function(x_stheta) {
   mean_theta_R = do.call('c', lapply(sample_r_theta, function(output_hh_index) mean(cbind(var_ind(data_hh_list[[output_hh_index]]), data_hh_list[[output_hh_index]]$Year == 2004, data_hh_list[[output_hh_index]]$Year == 2006, data_hh_list[[output_hh_index]]$Year == 2010, data_hh_list[[output_hh_index]]$Year == 2012) %*% x_transform[[1]]$beta_theta)))
 
   message('start estimation of r')
-  x_new = param_trial; 
-  x_new[x_transform[[2]]$sigma_theta] = x; 
-  x_transform = transform_param(x_new, return_index=TRUE)
-  print('----------------');
-  print('x = '); print(x_transform[[1]])
-
 
   if (Sys.info()[['sysname']] == 'Windows') {
     clusterExport(cl, c('x_transform', 'sick_parameters', 'xi_parameters'),envir=environment())
@@ -393,6 +402,10 @@ estimate_r_thetabar = optimize(function(x_stheta) {
     }
   }
 
+  init_val = fx_r(rep(0,8)); 
+  if (is.nan(init_val) | is.na(init_val)) {
+    return(NA)
+  }
   optim_r = optim(rep(0,8), function(x) fx_r(x), control=list(maxit=1000), method='Nelder-Mead') 
 
   param_trial[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r)] <<- optim_r$par
