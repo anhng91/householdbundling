@@ -320,6 +320,8 @@ estimate_r_thetabar = optimize(function(x_stheta) {
     return(output)
   }, control=list(maxit=1e1), method='BFGS')
 
+  param_trial[active_index] <<- optim_pref_theta$par
+  
   x_transform = transform_param(param_trial, return_index=TRUE)
 
   active_index = c(x_transform[[2]]$sigma_r,  x_transform[[2]]$sigma_theta, x_transform[[2]]$beta_r); 
