@@ -359,13 +359,15 @@ estimate_r_thetabar = optimize(function(x_stheta) {
   }
 
   root_r = do.call('c',lapply(moment_eligible_hh_output, function(output_hh) output_hh$root_r))
-
+  hh_theta = do.call('c',lapply(moment_eligible_hh_output, function(output_hh) output_hh$hh_theta))
   fx_r = function(x_r, derivative=FALSE) {
     if (max(abs(x_r)) > 5) {
       return(NA)
     }
-    mean_vec = rep(X_hh_theta_r %*% x_r[-length(x_r)], each = n_halton_at_r)
-    sd = exp(x_r[length(x_r)])
+    
+    sd = exp(x_r[length(x_r)-1])
+    correlation = x_r[length(x_r)]
+    mean_vec = rep(X_hh_theta_r %*% x_r[-length(x_r)], each = n_halton_at_r) + correlation * hh_theta
     prob = pnorm((root_r -mean_vec)/sd)
     prob[which(root_r == 4)] = 1
     prob[which(root_r < 0)] = 0
@@ -390,17 +392,17 @@ estimate_r_thetabar = optimize(function(x_stheta) {
     }
   }
 
-  init_val = fx_r(rep(0,8)); 
+  init_val = fx_r(rep(0,9)); 
   if (is.nan(init_val) | is.na(init_val)) {
     return(NA)
   }
-  optim_r = optim(rep(0,8), function(x) fx_r(x), control=list(maxit=1000), method='Nelder-Mead') 
+  optim_r = optim(rep(0,9), function(x) fx_r(x), control=list(maxit=1000), method='Nelder-Mead') 
 
-  param_trial[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r)] <<- optim_r$par
+  param_trial[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r, x_transform[[3]]$correlation)] <<- optim_r$par
   x_transform = transform_param(param_trial,return_index=TRUE); 
 
   output_2 = do.call('c', lapply(moment_eligible_hh_output, function(output_hh) {
-      prob_full_insured = (1 - pnorm(output_hh$root_r, mean = output_hh$X_hh %*% x_transform[[1]]$beta_r, sd = exp(x_transform[[1]]$sigma_r)))/(1 - pnorm(0, mean = output_hh$X_hh %*% x_transform[[1]]$beta_r, sd = exp(x_transform[[1]]$sigma_r)))
+      prob_full_insured = (1 - pnorm(output_hh$root_r, mean = output_hh$X_hh %*% x_transform[[1]]$beta_r + x_transform[[1]]$correlation * output_hh$hh_theta, sd = exp(x_transform[[1]]$sigma_r)))/(1 - pnorm(0, mean = output_hh$X_hh %*% x_transform[[1]]$beta_r + x_transform[[1]]$correlation * output_hh$hh_theta, sd = exp(x_transform[[1]]$sigma_r)))
       prob_full_insured[which(prob_full_insured > 1)] = 1
       Em = colMeans(apply(output_hh$m, 2, function(x) x * prob_full_insured))
       return(Em)

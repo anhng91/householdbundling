@@ -624,6 +624,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 		output$Em = colMeans(apply(m, 2, function(x) x * prob_full_insured/sum(prob_full_insured)))
 		output$Prob_full = mean(prob_full_insured)
 		output$root_r = root_r_vec
+		output$hh_theta = halton_mat_list$household_random_factor
 		output$m = m
 		output$X_hh = var_hh(data_hh_i)
 	} else {
@@ -962,7 +963,8 @@ transform_param = function(param_trial, return_index=FALSE, init=FALSE) {
 	start = end + 1; end = start + ncol(var_hh(data_hh_list[[1]])) -1; param$beta_omega = param_trial[start:end]; index$beta_omega = c(start:end)
 	start = end + 1; end = start; param$sigma_r = (param_trial[start:end]); index$sigma_r = c(start:end)
 	start = end + 1; end = start; param$sigma_gamma = (param_trial[start:end]); index$sigma_gamma = c(start:end)
-	start = end + 1; end = start; param$sigma_thetabar=param_trial[end] ; index$sigma_thetabar = end; 
+	start = end + 1; end = start; param$sigma_thetabar=param_trial[start:end] ; index$sigma_thetabar = end; 
+	start = end + 1; end = start; param$correlation=param_trial[end] ; index$correlation = end; 
 
 	if (init == TRUE) {
 		return(param_trial[1:end])
