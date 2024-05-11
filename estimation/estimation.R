@@ -156,7 +156,7 @@ mat_M_rtheta = do.call('rbind', lapply(data_hh_list[sample_r_theta], function(x)
     return(cbind(x$M_expense, x$M_expense^2))
   }))
 
-mat_Y_rtheta = do.call('c', lapply(data_hh_list[sample_r_theta], function(x) x$Income))
+mat_Y_rtheta = do.call('c', lapply(data_hh_list[sample_r_theta], function(x) x$Income[1]))
 
 full_insurance_indicator = do.call('c', lapply(data_hh_list[sample_r_theta], function(x) {
     return(x$HHsize_s[1] == x$N_vol[1])
@@ -170,7 +170,7 @@ X_r_all = do.call('rbind', lapply(data_hh_list[sample_r_theta], function(x) var_
 
 X_hh_theta_r = do.call('rbind',lapply(sample_r_theta, function(output_hh_index) var_hh(data_hh_list[[output_hh_index]])))
 
-n_involuntary = do.call('c', lapply(sample_r_theta, function(output_hh_index) data_hh_list[[output_hh_index]]$N_com[1] + data_hh_list[[output_hh_index]]$N_bef[1] + data_hh_list[[output_hh_index]]$N_std_w_ins))
+n_involuntary = do.call('c', lapply(sample_r_theta, function(output_hh_index) data_hh_list[[output_hh_index]]$N_com[1] + data_hh_list[[output_hh_index]]$N_bef[1] + data_hh_list[[output_hh_index]]$N_std_w_ins[1]))
 
 n_halton_at_r = 100; 
 
@@ -185,7 +185,7 @@ estimate_r_thetabar = optimize(function(x_stheta) {
 
   aggregate_moment_pref = function(x_transform) {
     if (Sys.info()[['sysname']] == 'Windows') {
-      clusterExport(cl, 'x_transform',envir=environment())
+      clusterExport(cl, c('x_transform', 'n_halton_at_r'),envir=environment())
       data_hh_list_pref = parLapply(cl, sample_identify_pref,function(index) {
         output = tryCatch(household_draw_theta_kappa_Rdraw(hh_index=index, param=x_transform[[1]], n_draw_halton = n_draw_halton, n_draw_gauss = 10, sick_parameters, xi_parameters, short=FALSE),error=function(e) e)
         return(output)
@@ -289,15 +289,13 @@ estimate_r_thetabar = optimize(function(x_stheta) {
 
   iteration = 1; 
 
-  init_param = rep(0, length(active_index))
-  param_trial[active_index] <<- init_param
   init_pref = aggregate_moment_pref(transform_param(param_trial, return_index=TRUE))
   init_theta = aggregate_moment_theta(transform_param(param_trial, return_index=TRUE))
 
   if (is.na(init_pref[[1]]) | is.nan(init_pref[[1]]) | is.na(init_theta[[1]]) | is.nan(init_theta[[1]])) {
     return(NA)
   }
-  optim_pref_theta = splitfngr::optim_share(init_param, function(x_pref_theta) {
+  optim_pref_theta = splitfngr::optim_share(param_trial[active_index], function(x_pref_theta) {
     if (max(abs(x_pref_theta)) > 10) {
       return(list(NA, rep(NA, length(active_index))))
     }
@@ -338,20 +336,10 @@ estimate_r_thetabar = optimize(function(x_stheta) {
 
   param_trial[active_index] <<- optim_pref_theta$par
 
-  x_transform = transform_param(param_trial, return_index=TRUE)
-
   active_index = c(x_transform[[2]]$sigma_r,  x_transform[[2]]$sigma_theta, x_transform[[2]]$beta_r); 
 
-  param_trial[active_index] = 0; 
-
-  save_obj_outside = NULL;
-  save_param_outside = NULL; 
-
-  # some draws will be insensitive to values of sigma_thetabar, so we do not need to simulate over these draws multiple times. 
-  x_new = param_trial; 
-  x_transform = transform_param(x_new, return_index=TRUE)
-
-
+  x_transform = transform_param(param_trial, return_index=TRUE)
+  
   min_theta_R = do.call('c', lapply(sample_r_theta, function(output_hh_index) min(cbind(var_ind(data_hh_list[[output_hh_index]]), data_hh_list[[output_hh_index]]$Year == 2004, data_hh_list[[output_hh_index]]$Year == 2006, data_hh_list[[output_hh_index]]$Year == 2010, data_hh_list[[output_hh_index]]$Year == 2012) %*% x_transform[[1]]$beta_theta)))
 
   max_theta_R = do.call('c', lapply(sample_r_theta, function(output_hh_index) max(cbind(var_ind(data_hh_list[[output_hh_index]]), data_hh_list[[output_hh_index]]$Year == 2004, data_hh_list[[output_hh_index]]$Year == 2006, data_hh_list[[output_hh_index]]$Year == 2010, data_hh_list[[output_hh_index]]$Year == 2012) %*% x_transform[[1]]$beta_theta)))
@@ -413,6 +401,7 @@ estimate_r_thetabar = optimize(function(x_stheta) {
 
   output_2 = do.call('c', lapply(moment_eligible_hh_output, function(output_hh) {
       prob_full_insured = (1 - pnorm(output_hh$root_r, mean = output_hh$X_hh %*% x_transform[[1]]$beta_r, sd = exp(x_transform[[1]]$sigma_r)))/(1 - pnorm(0, mean = output_hh$X_hh %*% x_transform[[1]]$beta_r, sd = exp(x_transform[[1]]$sigma_r)))
+      prob_full_insured[which(prob_full_insured > 1)] = 1
       Em = colMeans(apply(output_hh$m, 2, function(x) x * prob_full_insured))
       return(Em)
     }))
@@ -425,7 +414,7 @@ estimate_r_thetabar = optimize(function(x_stheta) {
   print(paste0('optim_r')); print(optim_r$par)
   print('------')
   return(output_2)
-}, c(-4,1)) 
+}, c(-10,1)) 
 
 param_trial[x_transform[[2]]$sigma_theta] <- estimate_r_thetabar$minimum
 

@@ -486,7 +486,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 			theta_draw[, i] = qnorm(halton_mat_list$theta[, i] * pnorm(-theta_bar[, i]/s_theta) + (1 - halton_mat_list$theta[, i])) * s_theta + theta_bar[, i]
 
 			theta_draw[, i] = lapply(theta_draw[, i], function(x) {
-				x[which(is.na(x) | is.infinite(x))] = 0
+				x[which(is.na(x) | is.infinite(x) | x < 0)] = 0
 				return(x)
 			}) %>% unlist()
 
@@ -557,6 +557,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 			# Full insurance: 
 			theta_draw = matrix(t(apply(halton_mat_list$theta, 1, function(x) {
 				output = qnorm(x * pnorm(-theta_bar[j,]/s_theta) + (1 - x)) * s_theta + theta_bar[j,] 
+				output = lapply(output, function(y) {y[which(y < 0)] = 0; return(y)}) %>% unlist()
 				return(output)
 			})), ncol=HHsize) * halton_mat_list$sick
 
