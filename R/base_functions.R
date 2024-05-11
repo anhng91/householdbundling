@@ -576,7 +576,6 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 			m[j,] = colMeans(theta_draw * kappa_draw[[1]] * (1 + matrix(apply(theta_draw * kappa_draw[[1]], 2, function(x) x * R_draw[[1]]^omega[j]), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[1]], 1, function(x) x^(-gamma[j,]) * delta[j,])), ncol=HHsize)), na.rm=TRUE)
 
 			U_full_insurance = (lapply((R_draw[[1]]^(1 - omega[j]) - 1)/(1 - omega[j]), function(x) ifelse(is.infinite(x), 0, x)) %>% unlist()  - rowSums(matrix(t(apply(theta_draw, 1, function(x) x * delta[j,])), ncol=HHsize) * matrix(t(apply(kappa_draw[[1]], 1, function(x) ((x + 1)^(1 - gamma[j,]) - 1)/(1 - gamma[j,]))), ncol=HHsize))) * (R_draw[[1]] > 0) + (R_draw[[1]] <= 0) * (income_vec[1 + length(elig_member_index)] - rowSums(theta_draw * kappa_draw[[1]]) + u_lowerbar)  
-			# print('U_full_insurance'); print(summary(U_full_insurance))
 
 			U_drop = list()
 
@@ -598,14 +597,15 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 					}
 				}
 
+
 				root_r_optimize = optimize(fr, c(-1,1))
 				if (is.na(root_r_optimize$objective)) {
 					theta_draw[which(is.na(U_full_insurance)),] %>% print
 				}
-				if (root_r_optimize$objective < 1e-4) {
+				if (root_r_optimize$objective < 1e-10) {
 					root_r[i] = root_r_optimize$minimum
 				} else {
-					if (mean(U_full_insurance) - mean(U_drop[[i + 1]]) > 0) {
+					if ((mean(U_full_insurance) - mean(U_drop[[i + 1]])) > 0) {
 						root_r[i] = -4
 					} else {
 						root_r[i] = 4
@@ -624,7 +624,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 		output$Em = colMeans(apply(m, 2, function(x) x * prob_full_insured/sum(prob_full_insured)))
 		output$Prob_full = mean(prob_full_insured)
 		output$root_r = root_r_vec
-		output$hh_theta = halton_mat_list$household_random_factor
+		output$hh_theta = halton_mat_list$household_random_factor 
 		output$m = m
 		output$X_hh = var_hh(data_hh_i)
 	} else {
