@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --mem=48G       # Maximum memory required per CPU (in megabytes)
+#SBATCH --mem=96G       # Maximum memory required per CPU (in megabytes)
 #SBATCH --ntasks-per-node=24
 #SBATCH --error=/work/teckyongtan/tecktan/Bundling/Data/Temp/Error_Output/err_%A_%a
 #SBATCH --output=/work/teckyongtan/tecktan/Bundling/Data/Temp/Error_Output/out_%A_%a
