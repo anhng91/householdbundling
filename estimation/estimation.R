@@ -656,7 +656,7 @@ message('computing final param_trial')
   output_2 = do.call('c', lapply(moment_eligible_hh_output, function(output_hh) {
       prob_full_insured = (1 - pnorm(output_hh$root_r, mean = output_hh$X_hh %*% x_transform[[1]]$beta_r + x_transform[[1]]$correlation * output_hh$hh_theta, sd = exp(x_transform[[1]]$sigma_r)))/(1 - pnorm(0, mean = output_hh$X_hh %*% x_transform[[1]]$beta_r + x_transform[[1]]$correlation * output_hh$hh_theta, sd = exp(x_transform[[1]]$sigma_r)))
       prob_full_insured[which(prob_full_insured > 1)] = 1
-      Em = colMeans(apply(output_hh$m, 2, function(x) x * prob_full_insured))
+      Em = colMeans(apply(output_hh$m, 2, function(x) x * prob_full_insured/sum(prob_full_insured)))
       return(Em)
     }))
 
