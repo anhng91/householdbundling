@@ -397,7 +397,7 @@ estimate_r_thetabar = optimize(function(x_stheta) {
   if (is.nan(init_val) | is.na(init_val)) {
     return(NA)
   }
-  optim_r = optim(rep(0,9), function(x) fx_r(x), control=list(maxit=1000), method='Nelder-Mead') 
+  optim_r = optim(rep(0,9), function(x) fx_r(x), control=list(maxit=1000), method='BFGS') 
 
   param_trial[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r, x_transform[[2]]$correlation)] <<- optim_r$par
   x_transform = transform_param(param_trial,return_index=TRUE); 
@@ -648,7 +648,7 @@ message('computing final param_trial')
   if (is.nan(init_val) | is.na(init_val)) {
     return(NA)
   }
-  optim_r = optim(rep(0,9), function(x) fx_r(x), control=list(maxit=1000), method='Nelder-Mead') 
+  optim_r = optim(rep(0,9), function(x) fx_r(x), control=list(maxit=1000), method='BFGS') 
 
   param_trial[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r, x_transform[[2]]$correlation)] <- optim_r$par
   x_transform = transform_param(param_trial,return_index=TRUE); 
