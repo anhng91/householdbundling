@@ -81,13 +81,12 @@ message('bootstrapping indices')
 set.seed(job_index);
 sample_index = sample(1:length(data_hh_list), length(data_hh_list), replace=TRUE)
 sample_r_theta = Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, function(x) ifelse(nrow(data_hh_list[[x]]) <= 4, x, NA)))))]
+sample_r_theta = sample(sample_r_theta, 100, replace=TRUE)
+sample_identify_pref = sample(sample_identify_pref, 50,  replace=TRUE)
+sample_identify_theta = sample(sample_identify_theta, 50,  replace=TRUE)
 # sample_r_theta = sample(sample_r_theta, length(sample_r_theta), replace=TRUE)
-# sample_r_theta = sample(sample_r_theta, 100, replace=TRUE)
-# sample_identify_pref = sample(sample_identify_pref, 50,  replace=TRUE)
-# sample_identify_theta = sample(sample_identify_theta, 50,  replace=TRUE)
-sample_r_theta = sample(sample_r_theta, length(sample_r_theta), replace=TRUE)
-sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
-sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
+# sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
+# sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 
 
 message('merging household frames')
@@ -423,7 +422,7 @@ estimate_r_thetabar = optimize(function(x_stheta) {
   print('------')
 
   param_trial <<- initial_param_trial
-  return(output_2)
+  return(output_2) 
 }, c(-6,1)) 
 
 
