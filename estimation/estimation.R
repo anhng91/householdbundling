@@ -661,10 +661,10 @@ message('computing final param_trial')
     }))
 
   print(output_2 %>% summary)
-  output_2 = mean(((output_2 - mat_M_rtheta[,1] * full_insurance_indicator_ind_level))^2, na.rm=TRUE) * 1e4
+  output_2 =  (mean(output_2) - mean((mat_M_rtheta[,1] * full_insurance_indicator_ind_level)/sum(full_insurance_indicator_ind_level)))^2 * 1e4 
   print(paste0('output_2 = ',output_2))
   
-  print((mat_M_rtheta[,1] * full_insurance_indicator_ind_level)%>% summary)
+  print((mat_M_rtheta[,1] * full_insurance_indicator_ind_level / sum(full_insurance_indicator_ind_level))%>% summary)
   print(paste0('optim_r')); print(optim_r$par)
   print('------')
 }
