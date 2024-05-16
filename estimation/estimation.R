@@ -374,11 +374,12 @@ estimate_r_thetabar = optimize(function(x_stheta) {
     prob[which(root_r < 0)] = 0
     prob[which(root_r >= 0)] = (prob[which(root_r >= 0)] -pnorm(- mean_vec[which(root_r >= 0)]/sd)) /(1 - pnorm(- mean_vec[which(root_r >= 0)]/sd))
 
-    output = sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * mat_Y_rtheta^2) + 
-      sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * mean_theta_R^2) +
-      sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * min_theta_R^2) + 
-      sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * max_theta_R^2) + 
-      sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * n_involuntary^2)
+    output = sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * mat_Y_rtheta^2) 
+    # + 
+    #   sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * mean_theta_R^2) +
+    #   sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * min_theta_R^2) + 
+    #   sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * max_theta_R^2) + 
+    #   sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * n_involuntary^2)
 
     print('actual insurance = '); print(summary(full_insurance_indicator))
     print('predicted insurance '); print(summary(matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))
@@ -405,7 +406,11 @@ estimate_r_thetabar = optimize(function(x_stheta) {
   output_2 = do.call('c', lapply(moment_eligible_hh_output, function(output_hh) {
       prob_full_insured = (1 - pnorm(output_hh$root_r, mean = output_hh$X_hh %*% x_transform[[1]]$beta_r + x_transform[[1]]$correlation * output_hh$hh_theta, sd = exp(x_transform[[1]]$sigma_r)))/(1 - pnorm(0, mean = output_hh$X_hh %*% x_transform[[1]]$beta_r + x_transform[[1]]$correlation * output_hh$hh_theta, sd = exp(x_transform[[1]]$sigma_r)))
       prob_full_insured[which(prob_full_insured > 1)] = 1
-      Em = colMeans(apply(output_hh$m, 2, function(x) x * prob_full_insured))
+      if (sum(prob_full_insured) == 0) {
+        Em = 0
+      } else {
+        Em = colMeans(apply(output_hh$m, 2, function(x) x * prob_full_insured/sum(prob_full_insured)))
+      }
       return(Em)
     }))
 

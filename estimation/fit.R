@@ -7,6 +7,7 @@ library(stargazer)
 library(parallel)
 library(randomForest)
 library(randtoolbox)
+library(Hmisc)
 
 # setwd('./familyenrollment')
 devtools::install(upgrade='never')
@@ -69,3 +70,4 @@ actual_data_summary = observed_data_voluntary %>% group_by(Y2) %>% summarise(mea
 actual_data_summary$type = 'actual'
 
 ggplot(data = rbind(predicted_data_summary, actual_data_summary), aes(x = Y2, y = mean_Vol_sts, color=type)) + geom_line() 
+ggplot(data = rbind(predicted_data_summary, actual_data_summary), aes(x = Y2, y = mean_m, color=type)) + geom_line() 

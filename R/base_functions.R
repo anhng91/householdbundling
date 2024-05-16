@@ -999,7 +999,8 @@ transform_param = function(param_trial, return_index=FALSE, init=FALSE) {
 #' @export
 #'
 #' @examples
-#' print('nothing')
+#' constant_f = function(x) x
+#' counterfactual_household_draw_theta_kappa_Rdraw(3, sample_data_and_parameter$param, n_draw_halton = 1000, n_draw_gauss = 10, sick_parameters = sick_parameters_sample, xi_parameters = xi_parameters_sample, u_lowerbar = -10, policy_mat_hh=policy_mat[[3]], seed_number=1, constraint_function=constant_f, within_hh_heterogeneity = list(omega=TRUE, gamma=TRUE, delta=TRUE, theta_bar=TRUE), cap_theta_draw_normalized = 0.95)
 #' 
 #' 
 counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 1000, n_draw_gauss = 10, sick_parameters, xi_parameters, u_lowerbar = -10, policy_mat_hh, seed_number=1, constraint_function, within_hh_heterogeneity = list(omega=TRUE, gamma=TRUE, delta=TRUE, theta_bar=TRUE), cap_theta_draw_normalized = 0.95) {
@@ -1051,8 +1052,8 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 		}
 	}
 	 
-	s_thetabar = exp(param$sigma_thetabar) - param$sigma_theta; 
-	s_theta = param$sigma_theta; 
+	s_thetabar = exp(param$sigma_thetabar); 
+	s_theta = exp(param$sigma_theta); 
 	theta_bar = NULL
 
 	random_hh_factor = rnorm(1)
@@ -1096,10 +1097,19 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 		random_xi_draws[,i] = lapply(halton_mat_list$coverage[,i], function(x) ifelse(x <= p_0[i], 0, ifelse(x <= p_0[i] + p_1[i], 1, (x - p_0[i] - p_1[i])/(1 - p_0[i] - p_1[i])))) %>% unlist()
 	}
 
-	theta_draw = matrix(t(apply(halton_mat_list$theta, 1, function(x) exp(x * s_theta + theta_bar))), ncol=HHsize) * halton_mat_list$sick
+	theta_draw = matrix(t(apply(halton_mat_list$theta, 1, function(x) {
+		output = qnorm(x * pnorm(-theta_bar/s_theta) + (1 - x)) * s_theta + theta_bar 
+		output = lapply(output, function(y) {y[which(y < 0)] = 0; return(y)}) %>% unlist()
+		return(output)
+	})), ncol=HHsize) * halton_mat_list$sick
+
+	theta_draw = matrix(apply(theta_draw, 2, function(x) {
+		x[which(is.na(x) | is.infinite(x))] = 0
+		return(x)
+	}), ncol=HHsize)
 
 	random_draw_here = runif(1)
-	beta_r = X_hh %*% param$beta_r 
+	beta_r = X_hh %*% param$beta_r + random_hh_factor * param$correlation
 	s_r = exp(param$sigma_r)
 	lower_threshold = pnorm(0, mean = beta_r, sd = s_r)
 
