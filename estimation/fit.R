@@ -1,3 +1,12 @@
+args = commandArgs(trailingOnly=TRUE)
+if (length(args)<2) { 
+  numcores = 24;
+  job_index = 1;  
+} else {
+  job_index = as.numeric(args[1]);
+  numcores = as.numeric(args[2]); 
+}
+
 library(knitr)
 library(tidyverse)
 library(lfe)

@@ -372,6 +372,7 @@ estimate_r_thetabar = optimize(function(x_stheta) {
     prob[which(root_r == 4)] = 1
     prob[which(root_r < 0)] = 0
     prob[which(root_r >= 0)] = (prob[which(root_r >= 0)] -pnorm(- mean_vec[which(root_r >= 0)]/sd)) /(1 - pnorm(- mean_vec[which(root_r >= 0)]/sd))
+    prob[which(is.na(prob))] = 1;
 
     output = sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * mat_Y_rtheta^2) 
     # + 
@@ -405,6 +406,7 @@ estimate_r_thetabar = optimize(function(x_stheta) {
   output_2 = do.call('c', lapply(moment_eligible_hh_output, function(output_hh) {
       prob_full_insured = (1 - pnorm(output_hh$root_r, mean = output_hh$X_hh %*% x_transform[[1]]$beta_r + x_transform[[1]]$correlation * output_hh$hh_theta, sd = exp(x_transform[[1]]$sigma_r)))/(1 - pnorm(0, mean = output_hh$X_hh %*% x_transform[[1]]$beta_r + x_transform[[1]]$correlation * output_hh$hh_theta, sd = exp(x_transform[[1]]$sigma_r)))
       prob_full_insured[which(prob_full_insured > 1)] = 1
+      prob_full_insured[which(is.na(prob_full_insured))] = 1
       if (sum(prob_full_insured) == 0) {
         Em = 0
       } else {
@@ -621,6 +623,7 @@ message('computing final param_trial')
     correlation = x_r[length(x_r)]
     mean_vec = rep(X_hh_theta_r %*% x_r[1:(length(x_r)-2)], each = n_halton_at_r) + correlation * hh_theta
     prob = pnorm((root_r -mean_vec)/sd)
+    print('root_r = '); print(root_r[which(is.na(prob))]);
     prob[which(root_r == 4)] = 1
     prob[which(root_r < 0)] = 0
     prob[which(root_r >= 0)] = (prob[which(root_r >= 0)] -pnorm(- mean_vec[which(root_r >= 0)]/sd)) /(1 - pnorm(- mean_vec[which(root_r >= 0)]/sd))
