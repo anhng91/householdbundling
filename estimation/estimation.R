@@ -423,8 +423,6 @@ compute_inner_loop = function(x_stheta) {
   print((mat_M_rtheta[,1] * full_insurance_indicator_ind_level)%>% summary)
   print(paste0('optim_r')); print(optim_r$par)
   print('------')
-
-  param_trial <<- initial_param_trial
   return(output_2) 
 }
 

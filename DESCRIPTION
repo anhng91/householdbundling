@@ -18,7 +18,12 @@ Imports:
     stats,
     ggplot2,
     tidyverse,
-    magrittr
+    magrittr,
+    lfe,
+    plm,
+    stargazer,
+    randomForest,
+    splitfngr
 Depends: 
     R (>= 2.10)
 LazyData: true
