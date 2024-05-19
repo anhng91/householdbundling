@@ -81,9 +81,9 @@ message('bootstrapping indices')
 set.seed(job_index);
 sample_index = sample(1:length(data_hh_list), length(data_hh_list), replace=TRUE)
 sample_r_theta = Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, function(x) ifelse(nrow(data_hh_list[[x]]) <= 4, x, NA)))))]
-sample_r_theta = sample(sample_r_theta, 1000, replace=TRUE)
-sample_identify_pref = sample(sample_identify_pref, 500,  replace=TRUE)
-sample_identify_theta = sample(sample_identify_theta, 500,  replace=TRUE)
+sample_r_theta = sample(sample_r_theta, 500, replace=TRUE)
+sample_identify_pref = sample(sample_identify_pref, 200,  replace=TRUE)
+sample_identify_theta = sample(sample_identify_theta, 200,  replace=TRUE)
 # sample_r_theta = sample(sample_r_theta, length(sample_r_theta), replace=TRUE)
 # sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
 # sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
@@ -178,6 +178,7 @@ param_trial[x_transform[[2]]$beta_theta[1]] = 0
 initial_param_trial = param_trial
 
 compute_inner_loop = function(x_stheta) {
+  param_trial = param_trial * 0; 
   param_trial[transform_param_trial[[2]]$sigma_theta] <<- x_stheta; 
   transform_param_trial = transform_param(param_trial, return_index=TRUE);
   var_list = c('beta_delta', 'beta_omega', 'beta_gamma', 'sigma_delta', 'sigma_gamma', 'sigma_omega')
