@@ -418,7 +418,7 @@ compute_inner_loop = function(x_stheta) {
     }))
 
   print(output_2 %>% summary)
-  output_2 =  (mean(output_2) - mean((mat_M_rtheta[,1] * full_insurance_indicator_ind_level)/sum(full_insurance_indicator_ind_level)))^2 * 1e4 
+  output_2 =  (log(mean(output_2)) - log(mean((mat_M_rtheta[,1] * full_insurance_indicator_ind_level))))^2
   print(paste0('output_2 = ',output_2))
   
   print((mat_M_rtheta[,1] * full_insurance_indicator_ind_level)%>% summary)
