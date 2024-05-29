@@ -81,9 +81,9 @@ message('bootstrapping indices')
 set.seed(job_index);
 sample_index = sample(1:length(data_hh_list), length(data_hh_list), replace=TRUE)
 sample_r_theta = Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, function(x) ifelse(nrow(data_hh_list[[x]]) <= 4, x, NA)))))]
-sample_r_theta = sample(sample_r_theta, 500, replace=TRUE)
-sample_identify_pref = sample(sample_identify_pref, 200,  replace=TRUE)
-sample_identify_theta = sample(sample_identify_theta, 200,  replace=TRUE)
+sample_r_theta = sample(sample_r_theta, 1000, replace=TRUE)
+sample_identify_pref = sample(sample_identify_pref, 500,  replace=TRUE)
+sample_identify_theta = sample(sample_identify_theta, 500,  replace=TRUE)
 # sample_r_theta = sample(sample_r_theta, length(sample_r_theta), replace=TRUE)
 # sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
 # sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
@@ -177,12 +177,12 @@ param_trial[x_transform[[2]]$beta_theta[1]] = 0
 
 initial_param_trial = param_trial
 
-compute_inner_loop = function(x_stheta) {
-  param_trial = param_trial * 0; 
-  param_trial[transform_param_trial[[2]]$sigma_theta] <<- x_stheta; 
-  transform_param_trial = transform_param(param_trial, return_index=TRUE);
+compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE, estimate_pref=TRUE) {
+  param_trial_here = initial_param_trial
+  param_trial_here[transform_param_trial[[2]]$sigma_theta] = x_stheta; 
+  transform_param_trial = transform_param(param_trial_here, return_index=TRUE);
   var_list = c('beta_delta', 'beta_omega', 'beta_gamma', 'sigma_delta', 'sigma_gamma', 'sigma_omega')
-  x_transform = transform_param(param_trial, return_index=TRUE)
+  x_transform = transform_param(param_trial_here, return_index=TRUE)
   print(x_transform[[1]])
 
   aggregate_moment_pref = function(x_transform) {
@@ -291,56 +291,60 @@ compute_inner_loop = function(x_stheta) {
 
   iteration = 1; 
 
-  init_pref = aggregate_moment_pref(transform_param(param_trial, return_index=TRUE))
-  init_theta = aggregate_moment_theta(transform_param(param_trial, return_index=TRUE))
+  init_pref = aggregate_moment_pref(transform_param(param_trial_here, return_index=TRUE))
+  init_theta = aggregate_moment_theta(transform_param(param_trial_here, return_index=TRUE))
 
   if (is.na(init_pref[[1]]) | is.nan(init_pref[[1]]) | is.na(init_theta[[1]]) | is.nan(init_theta[[1]])) {
     return(NA)
   }
-  optim_pref_theta = splitfngr::optim_share(param_trial[active_index], function(x_pref_theta) {
-    if (max(abs(x_pref_theta)) > 10) {
-      return(list(NA, rep(NA, length(active_index))))
-    }
-    param_trial[active_index] <<- x_pref_theta 
-    x_transform = transform_param(param_trial, return_index = TRUE)
-    message('computing preference moment')
-    pref_moment = aggregate_moment_pref(transform_param(param_trial, return_index=TRUE))
-    deriv_theta_index = c(x_transform[[2]]$beta_theta[1], x_transform[[2]]$beta_theta_ind[1], x_transform[[2]]$sigma_thetabar)
-    if (is.na(pref_moment[[1]])) {
-      return(list(NA, rep(NA, length(x_pref_theta))))
-    }
-    message('computing preference moment derivative')
-    for (i in deriv_theta_index) {
-      param_trial_i = param_trial; param_trial_i[i] = param_trial[i] + tol
-      fi = aggregate_moment_pref(transform_param(param_trial_i, return_index=TRUE))
-      if (i == deriv_theta_index[1]) {
-        pref_moment[[2]] = c(pref_moment[[2]],(rowMeans((fi[[3]] - pref_moment[[3]])/tol) %*% X_ind_pref_with_year)/nrow(X_ind_pref))
-      } else if (i == deriv_theta_index[2]) {
-        pref_moment[[2]] = c(pref_moment[[2]],(rowMeans((fi[[3]] - pref_moment[[3]])/tol) %*% X_ind_pref)/nrow(X_ind_pref))
-      } else {
-        pref_moment[[2]] = c(pref_moment[[2]], (fi[[1]] - pref_moment[[1]])/tol)
+
+  if (estimate_theta) {
+    optim_pref_theta = splitfngr::optim_share(param_trial_here[active_index], function(x_pref_theta) {
+      if (max(abs(x_pref_theta)) > 10) {
+        return(list(NA, rep(NA, length(active_index))))
       }
-    }
-    message('computing theta moment')
-    output = list()
-    output[[1]] =  pref_moment[[1]]
-    output[[2]] =  pref_moment[[2]]
-    print(paste0('output here = ',output[[1]]))
-    iteration <<- iteration + 1; 
-    print(paste0('at iteration = ', iteration))
-    output[[2]][length(x_pref_theta)] = output[[2]][length(x_pref_theta)] * exp(x_pref_theta[length(x_pref_theta)])/(1 + exp(x_pref_theta[length(x_pref_theta)]))^2
+      param_trial_inner_theta = param_trial_here
+      param_trial_inner_theta[active_index] = x_pref_theta 
+      x_transform = transform_param(param_trial_inner_theta, return_index = TRUE)
+      message('computing preference moment')
+      pref_moment = aggregate_moment_pref(transform_param(param_trial_inner_theta, return_index=TRUE))
+      deriv_theta_index = c(x_transform[[2]]$beta_theta[1], x_transform[[2]]$beta_theta_ind[1], x_transform[[2]]$sigma_thetabar)
+      if (is.na(pref_moment[[1]])) {
+        return(list(NA, rep(NA, length(x_pref_theta))))
+      }
+      message('computing preference moment derivative')
+      for (i in deriv_theta_index) {
+        param_trial_i = param_trial_inner_theta; param_trial_i[i] = param_trial_inner_theta[i] + tol
+        fi = aggregate_moment_pref(transform_param(param_trial_i, return_index=TRUE))
+        if (i == deriv_theta_index[1]) {
+          pref_moment[[2]] = c(pref_moment[[2]],(rowMeans((fi[[3]] - pref_moment[[3]])/tol) %*% X_ind_pref_with_year)/nrow(X_ind_pref))
+        } else if (i == deriv_theta_index[2]) {
+          pref_moment[[2]] = c(pref_moment[[2]],(rowMeans((fi[[3]] - pref_moment[[3]])/tol) %*% X_ind_pref)/nrow(X_ind_pref))
+        } else {
+          pref_moment[[2]] = c(pref_moment[[2]], (fi[[1]] - pref_moment[[1]])/tol)
+        }
+      }
+      message('computing theta moment')
+      output = list()
+      output[[1]] =  pref_moment[[1]]
+      output[[2]] =  pref_moment[[2]]
+      print(paste0('output here = ',output[[1]]))
+      iteration <<- iteration + 1; 
+      print(paste0('at iteration = ', iteration))
+      output[[2]][length(x_pref_theta)] = output[[2]][length(x_pref_theta)] * exp(x_pref_theta[length(x_pref_theta)])/(1 + exp(x_pref_theta[length(x_pref_theta)]))^2
 
-    output_theta = aggregate_moment_theta(x_transform)
-    output[[1]] = output[[1]] + output_theta[[1]] 
-    output[[2]] = output[[2]] + output_theta[[2]][active_index] 
-    return(output)
-  }, control=list(maxit=1e1), method='BFGS')
+      output_theta = aggregate_moment_theta(x_transform)
+      output[[1]] = output[[1]] + output_theta[[1]] 
+      output[[2]] = output[[2]] + output_theta[[2]][active_index] 
+      return(output)
+    }, control=list(maxit=1e1), method='BFGS')
 
-  param_trial[active_index] <<- optim_pref_theta$par
-
+    param_trial_here[active_index] = optim_pref_theta$par
+  }
+  
   active_index = c(x_transform[[2]]$sigma_r,  x_transform[[2]]$sigma_theta, x_transform[[2]]$beta_r); 
 
-  x_transform = transform_param(param_trial, return_index=TRUE)
+  x_transform = transform_param(param_trial_here, return_index=TRUE)
   
   min_theta_R = do.call('c', lapply(sample_r_theta, function(output_hh_index) min(cbind(var_ind(data_hh_list[[output_hh_index]]), data_hh_list[[output_hh_index]]$Year == 2004, data_hh_list[[output_hh_index]]$Year == 2006, data_hh_list[[output_hh_index]]$Year == 2010, data_hh_list[[output_hh_index]]$Year == 2012) %*% x_transform[[1]]$beta_theta)))
 
@@ -353,17 +357,17 @@ compute_inner_loop = function(x_stheta) {
   if (Sys.info()[['sysname']] == 'Windows') {
     clusterExport(cl, c('x_transform', 'sick_parameters', 'xi_parameters'),envir=environment())
     moment_eligible_hh_output = parLapply(cl, sample_r_theta, function(mini_data_index) {
-      output = (household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], n_halton_at_r, 10, sick_parameters, xi_parameters, u_lowerbar = -0.1))
+      output = (household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], n_halton_at_r, 10, sick_parameters, xi_parameters, u_lowerbar = -1))
       return(output)
     })
   } else {
-    moment_eligible_hh_output = mclapply(sample_r_theta, function(mini_data_index) tryCatch(household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], n_halton_at_r, 10, sick_parameters, xi_parameters, u_lowerbar = -0.1), error=function(e) e), mc.cores=numcores)
+    moment_eligible_hh_output = mclapply(sample_r_theta, function(mini_data_index) tryCatch(household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], n_halton_at_r, 10, sick_parameters, xi_parameters, u_lowerbar = -1), error=function(e) e), mc.cores=numcores)
   }
 
   root_r = do.call('c',lapply(moment_eligible_hh_output, function(output_hh) output_hh$root_r))
   hh_theta = do.call('c',lapply(moment_eligible_hh_output, function(output_hh) output_hh$hh_theta))
-  fx_r = function(x_r, derivative=FALSE) {
-    if (max(abs(x_r)) > 5) {
+  fx_r = function(x_r, derivative=FALSE, silent=TRUE) {
+    if (max(abs(x_r)) > 10) {
       return(NA)
     }
     
@@ -376,17 +380,19 @@ compute_inner_loop = function(x_stheta) {
     prob[which(root_r >= 0)] = (prob[which(root_r >= 0)] -pnorm(- mean_vec[which(root_r >= 0)]/sd)) /(1 - pnorm(- mean_vec[which(root_r >= 0)]/sd))
     prob[which(is.na(prob))] = 1;
 
-    output = - sum(log(matrix(prob, nrow = n_halton_at_r) %>% colMeans + 1e-20) * full_insurance_indicator + log(matrix(1 - prob, nrow = n_halton_at_r) %>% colMeans + 1e-20) * (1 - full_insurance_indicator))
-    # output = sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * mat_Y_rtheta^2 + 
-    #   sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * mean_theta_R^2) +
-    #   sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * min_theta_R^2) + 
-    #   sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * max_theta_R^2) + 
-    #   sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * n_involuntary^2)
+    # output = - sum(log(matrix(prob, nrow = n_halton_at_r) %>% colMeans + 1e-20) * full_insurance_indicator + log(matrix(1 - prob, nrow = n_halton_at_r) %>% colMeans + 1e-20) * (1 - full_insurance_indicator))
+    output = sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * mat_Y_rtheta^2) + 
+      sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * mean_theta_R^2) +
+      sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * min_theta_R^2) + 
+      sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * max_theta_R^2) + 
+      sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * n_involuntary^2)
 
-    print('actual insurance = '); print(summary(full_insurance_indicator))
-    print('predicted insurance '); print(summary(matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))
-    print('x_r = '); print(x_r);
-    print('output = '); print(output);
+    if (!silent) {
+      print('actual insurance = '); print(summary(full_insurance_indicator))
+      print('predicted insurance '); print(summary(matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))
+      print('x_r = '); print(x_r);
+      print('output = '); print(output);
+    }
 
     if (is.nan(output) | is.infinite(output)) {
       return(NA)
@@ -400,33 +406,52 @@ compute_inner_loop = function(x_stheta) {
   if (is.nan(init_val) | is.na(init_val)) {
     return(NA)
   }
-  optim_r = optim(rep(0,9), function(x) fx_r(x), control=list(maxit=1000), method='Nelder-Mead') 
+  optim_r = optim(rep(0,9), function(x) fx_r(x, silent=TRUE), control=list(maxit=1000), method='Nelder-Mead') 
 
-  param_trial[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r, x_transform[[2]]$correlation)] <<- optim_r$par
-  x_transform = transform_param(param_trial,return_index=TRUE); 
+  fx_r(optim_r$par, silent=FALSE)
+
+  param_trial_here[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r, x_transform[[2]]$correlation)] = optim_r$par
+  x_transform = transform_param(param_trial_here,return_index=TRUE); 
 
   output_2 = do.call('c', lapply(moment_eligible_hh_output, function(output_hh) {
-      prob_full_insured = (1 - pnorm(output_hh$root_r, mean = output_hh$X_hh %*% x_transform[[1]]$beta_r + x_transform[[1]]$correlation * output_hh$hh_theta, sd = exp(x_transform[[1]]$sigma_r)))/(1 - pnorm(0, mean = output_hh$X_hh %*% x_transform[[1]]$beta_r + x_transform[[1]]$correlation * output_hh$hh_theta, sd = exp(x_transform[[1]]$sigma_r)))
-      prob_full_insured[which(prob_full_insured > 1)] = 1
-      prob_full_insured[which(is.na(prob_full_insured))] = 1
-      if (sum(prob_full_insured) == 0) {
-        Em = 0
+      sd = exp(optim_r$par[length(optim_r$par)-1])
+      correlation = optim_r$par[length(optim_r$par)]
+      mean_vec = rep(X_hh_theta_r %*% optim_r$par[1:(length(optim_r$par)-2)], each = n_halton_at_r) + correlation * hh_theta
+      prob = pnorm((root_r -mean_vec)/sd)
+      prob[which(root_r == 4)] = 1
+      prob[which(root_r < 0)] = 0
+      prob[which(root_r >= 0)] = (prob[which(root_r >= 0)] -pnorm(- mean_vec[which(root_r >= 0)]/sd)) /(1 - pnorm(- mean_vec[which(root_r >= 0)]/sd))
+      prob[which(is.na(prob))] = 1;
+      if (sum(prob) == 0) {
+        Em = NA
       } else {
-        Em = colMeans(apply(output_hh$m, 2, function(x) x * prob_full_insured/sum(prob_full_insured)))
+        Em = colSums(apply(output_hh$m, 2, function(x) x * prob/sum(prob)))
       }
       return(Em)
     }))
 
   print(output_2 %>% summary)
-  output_2 =  (log(mean(output_2)) - log(mean((mat_M_rtheta[,1] * full_insurance_indicator_ind_level))))^2
+  output_2 =  mean(((output_2 - mat_M_rtheta[,1]) * full_insurance_indicator_ind_level)^2, na.rm=TRUE) * 1e9
   print(paste0('output_2 = ',output_2))
   
-  print((mat_M_rtheta[,1] * full_insurance_indicator_ind_level)%>% summary)
+  print(mat_M_rtheta[which(full_insurance_indicator_ind_level == 1),1] %>% summary)
   print(paste0('optim_r')); print(optim_r$par)
   print('------')
-  return(output_2) 
+  if (!(estimate_theta)) {
+    optim_pref_theta = list()
+    optim_pref_theta$value = 0 
+  }
+  if (return_result) {
+    return(param_trial_here)
+  } else {
+    return(output_2 + optim_r$value + optim_pref_theta$value) 
+  }
+  
 }
 
+param_trial = compute_inner_loop(-3, return_result=TRUE)
+
+initial_param_trial = param_trial; 
 
 estimate_r_thetabar = optimize(function(xs) {
   output = try(compute_inner_loop(xs))
@@ -438,9 +463,7 @@ estimate_r_thetabar = optimize(function(xs) {
 }, c(-6,1)) 
 
 
-param_trial[x_transform[[2]]$sigma_theta] <- estimate_r_thetabar$minimum
-
-compute_inner_loop(estimate_r_thetabar$minimum)
+param_trial = compute_inner_loop(estimate_r_thetabar$minimum, return_result=TRUE)
 
 message('computing final param_trial')
 

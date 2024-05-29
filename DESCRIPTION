@@ -23,7 +23,9 @@ Imports:
     plm,
     stargazer,
     randomForest,
-    splitfngr
+    splitfngr,
+    Hmisc,
+    gridExtra
 Depends: 
     R (>= 2.10)
 LazyData: true

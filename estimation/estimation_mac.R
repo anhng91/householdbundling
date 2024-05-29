@@ -411,7 +411,7 @@ compute_inner_loop = function(x_stheta) {
       if (sum(prob_full_insured) == 0) {
         Em = 0
       } else {
-        Em = colMeans(apply(output_hh$m, 2, function(x) x * prob_full_insured/sum(prob_full_insured)))
+        Em = colMeans(apply(output_hh$m, 2, function(x) x * prob_full_insured))
       }
       return(Em)
     },mc.cores=numcores))

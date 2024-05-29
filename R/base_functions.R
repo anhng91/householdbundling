@@ -573,7 +573,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 
 			R_draw[[1]] =  lapply(income_vec[1 + length(elig_member_index)] - rowSums(theta_draw * kappa_draw[[1]]), function(x) max(x,0)) %>% unlist()	
 
-			m[j,] = colMeans(theta_draw * kappa_draw[[1]] * (1 + matrix(apply(theta_draw * kappa_draw[[1]], 2, function(x) x * R_draw[[1]]^omega[j]), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[1]], 1, function(x) x^(-gamma[j,]) * delta[j,])), ncol=HHsize)), na.rm=TRUE)
+			m[j,] = colMeans(theta_draw * kappa_draw[[1]] * (1 + matrix(apply(theta_draw * kappa_draw[[1]], 2, function(x) R_draw[[1]]^omega[j]), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[1]], 1, function(x) x^(-gamma[j,]) * delta[j,])), ncol=HHsize)), na.rm=TRUE)
 
 			U_full_insurance = (lapply((R_draw[[1]]^(1 - omega[j]) - 1)/(1 - omega[j]), function(x) ifelse(is.infinite(x), 0, x)) %>% unlist()  - rowSums(matrix(t(apply(theta_draw, 1, function(x) x * delta[j,])), ncol=HHsize) * matrix(t(apply(kappa_draw[[1]], 1, function(x) ((x + 1)^(1 - gamma[j,]) - 1)/(1 - gamma[j,]))), ncol=HHsize))) * (R_draw[[1]] > 0) + (R_draw[[1]] <= 0) * (income_vec[1 + length(elig_member_index)] - rowSums(theta_draw * kappa_draw[[1]]) + u_lowerbar)  
 
@@ -1138,8 +1138,8 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 
 	if (data_hh_i$HHsize_s[1] == 0) {
 		R_draw[[1]] =  lapply(income_vec[1] - rowSums(theta_draw * kappa_draw[[1]]), function(x) max(x,0)) %>% unlist()		
-		m = colMeans(theta_draw * kappa_draw[[1]] * (1 + matrix(apply(theta_draw * kappa_draw[[1]], 2, function(x) x * R_draw[[1]]^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[1]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize)), na.rm=TRUE)
-		cost_to_insurance = colMeans(theta_draw * (1 - kappa_draw[[1]]) * (1 + matrix(apply(theta_draw * kappa_draw[[1]], 2, function(x) x * R_draw[[1]]^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[1]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize)), na.rm=TRUE)
+		m = colMeans(theta_draw * kappa_draw[[1]] * (1 + matrix(apply(theta_draw * kappa_draw[[1]], 2, function(x) R_draw[[1]]^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[1]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize)), na.rm=TRUE)
+		cost_to_insurance = colMeans(theta_draw * (1 - kappa_draw[[1]]) * (1 + matrix(apply(theta_draw * kappa_draw[[1]], 2, function(x) R_draw[[1]]^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[1]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize)), na.rm=TRUE)
 		vol_sts_counterfactual = rep(0, HHsize);
 	}
 
@@ -1229,8 +1229,8 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 			
 		}
 
-		m = colMeans(theta_draw * kappa_draw_ordered[[optimal_U_index]] * (1 + matrix(apply(theta_draw * kappa_draw_ordered[[optimal_U_index]], 2, function(x) x * R_draw_ordered[[optimal_U_index]]^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw_ordered[[optimal_U_index]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize)), na.rm=TRUE)
-		cost_to_insurance = colMeans(theta_draw * (1 - kappa_draw_ordered[[optimal_U_index]]) * (1 + matrix(apply(theta_draw * kappa_draw_ordered[[optimal_U_index]], 2, function(x) x * R_draw_ordered[[optimal_U_index]]^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw_ordered[[optimal_U_index]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize)), na.rm=TRUE)
+		m = colMeans(theta_draw * kappa_draw_ordered[[optimal_U_index]] * (1 + matrix(apply(theta_draw * kappa_draw_ordered[[optimal_U_index]], 2, function(x) R_draw_ordered[[optimal_U_index]]^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw_ordered[[optimal_U_index]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize)), na.rm=TRUE)
+		cost_to_insurance = colMeans(theta_draw * (1 - kappa_draw_ordered[[optimal_U_index]]) * (1 + matrix(apply(theta_draw * kappa_draw_ordered[[optimal_U_index]], 2, function(x) R_draw_ordered[[optimal_U_index]]^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw_ordered[[optimal_U_index]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize)), na.rm=TRUE)
 	}
 
 	output = list()

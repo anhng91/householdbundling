@@ -48,7 +48,7 @@ if (Sys.info()[['sysname']] == 'Windows') {
 if (Sys.info()[['sysname']] == 'Windows') {
   clusterExport(cl, c('transform_param_final', 'param','counterfactual_household_draw_theta_kappa_Rdraw'))
   fit_values = parLapply(cl, Vol_HH_list_index, function(id) {
-	output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -10, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
+	output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
 	output = as.data.frame(output)
 	output$Y = data_hh_list[[id]]$Income; 
 	output$m_observed = data_hh_list[[id]]$M_expense; 
@@ -56,7 +56,7 @@ if (Sys.info()[['sysname']] == 'Windows') {
 	})
 } else {
   fit_values = mclapply(Vol_HH_list_index, function(id) {
-	output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -10, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
+	output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
 	output = as.data.frame(output)
 	output$Y = data_hh_list[[id]]$Income; 
 	output$m_observed = data_hh_list[[id]]$M_expense; 
