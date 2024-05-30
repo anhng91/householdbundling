@@ -81,9 +81,9 @@ message('bootstrapping indices')
 set.seed(job_index);
 sample_index = sample(1:length(data_hh_list), length(data_hh_list), replace=TRUE)
 sample_r_theta = Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, function(x) ifelse(nrow(data_hh_list[[x]]) <= 4, x, NA)))))]
-sample_r_theta = sample(sample_r_theta, 1000, replace=TRUE)
-sample_identify_pref = sample(sample_identify_pref, 500,  replace=TRUE)
-sample_identify_theta = sample(sample_identify_theta, 500,  replace=TRUE)
+sample_r_theta = sample(sample_r_theta, 10, replace=TRUE)
+sample_identify_pref = sample(sample_identify_pref, 10,  replace=TRUE)
+sample_identify_theta = sample(sample_identify_theta, 50,  replace=TRUE)
 # sample_r_theta = sample(sample_r_theta, length(sample_r_theta), replace=TRUE)
 # sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
 # sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
@@ -156,6 +156,8 @@ mat_M_rtheta = do.call('rbind', lapply(data_hh_list[sample_r_theta], function(x)
   }))
 
 mat_Y_rtheta = do.call('c', lapply(data_hh_list[sample_r_theta], function(x) x$Income[1]))
+
+mat_Y_rtheta = pnorm(mat_Y_rtheta, mean = mean(mat_Y_rtheta), sd = sd(mat_Y_rtheta))
 
 full_insurance_indicator = do.call('c', lapply(data_hh_list[sample_r_theta], function(x) {
     return(x$HHsize_s[1] == x$N_vol[1])
@@ -463,7 +465,7 @@ estimate_r_thetabar = optimize(function(xs) {
 }, c(-6,1)) 
 
 
-param_trial = compute_inner_loop(estimate_r_thetabar$minimum, return_result=TRUE)
+param_trial = compute_inner_loop(estimate_r_thetabar$minimum, return_result=TRUE, estimate_theta=TRUE, estimate_pref = TRUE)
 
 message('computing final param_trial')
 
