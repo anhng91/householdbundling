@@ -375,7 +375,7 @@ compute_inner_loop = function(x_stheta) {
     prob[which(root_r >= 0)] = (prob[which(root_r >= 0)] -pnorm(- mean_vec[which(root_r >= 0)]/sd)) /(1 - pnorm(- mean_vec[which(root_r >= 0)]/sd))
     prob[which(is.na(prob))] = 1;
 
-    output = - sum(log(matrix(prob, nrow = n_halton_at_r) %>% colMeans + 1e-20) * full_insurance_indicator + log(matrix(1 - prob, nrow = n_halton_at_r) %>% colMeans + 1e-20) * (1 - full_insurance_indicator))
+    output = - sum(log(matrix(1 - prob, nrow = n_halton_at_r) %>% colMeans + 1e-20) * full_insurance_indicator + log(matrix(prob, nrow = n_halton_at_r) %>% colMeans + 1e-20) * (1 - full_insurance_indicator))
     # output = sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * mat_Y_rtheta^2 + 
     #   sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * mean_theta_R^2) +
     #   sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * min_theta_R^2) + 
@@ -405,7 +405,8 @@ compute_inner_loop = function(x_stheta) {
   x_transform = transform_param(param_trial,return_index=TRUE); 
 
   output_2 = do.call('c', mclapply(moment_eligible_hh_output, function(output_hh) {
-      prob_full_insured = (1 - pnorm(output_hh$root_r, mean = output_hh$X_hh %*% x_transform[[1]]$beta_r + x_transform[[1]]$correlation * output_hh$hh_theta, sd = exp(x_transform[[1]]$sigma_r)))/(1 - pnorm(0, mean = output_hh$X_hh %*% x_transform[[1]]$beta_r + x_transform[[1]]$correlation * output_hh$hh_theta, sd = exp(x_transform[[1]]$sigma_r)))
+      # prob_full_insured = (1 - pnorm(output_hh$root_r, mean = output_hh$X_hh %*% x_transform[[1]]$beta_r + x_transform[[1]]$correlation * output_hh$hh_theta, sd = exp(x_transform[[1]]$sigma_r)))/(1 - pnorm(0, mean = output_hh$X_hh %*% x_transform[[1]]$beta_r + x_transform[[1]]$correlation * output_hh$hh_theta, sd = exp(x_transform[[1]]$sigma_r)))
+      prob_full_insured = 1 - prnom()
       prob_full_insured[which(prob_full_insured > 1)] = 1
       prob_full_insured[which(is.na(prob_full_insured))] = 1
       if (sum(prob_full_insured) == 0) {
