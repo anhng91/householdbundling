@@ -510,6 +510,10 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 			if (length(which_infinite) > 0) {
 				gamma[which_infinite,i] = 0; 
 			}
+			which_negative = which(gamma[,i] < 0)
+			if (length(which_negative) > 0) {
+				gamma[which_negative,i] = 0; 
+			}
 		}
 		beta_delta = X_ind %*% param$beta_delta; 
 		s_delta = exp(param$sigma_delta); 
@@ -520,6 +524,10 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 			which_infinite = which(is.infinite(delta[,i]))
 			if (length(which_infinite) > 0) {
 				delta[which_infinite,i] = 0; 
+			}
+			which_negative = which(delta[,i] < 0)
+			if (length(which_negative) > 0) {
+				delta[which_negative,i] = 0; 
 			}
 		}
 		 
@@ -540,6 +548,10 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 		which_infinite = which(is.infinite(omega))
 		if (length(which_infinite) > 0) {
 			omega[which_infinite] = 0; 
+		}
+		which_negative = which(omega < 0)
+		if (length(which_negative) > 0) {
+			omega[which_negative] = 0; 
 		}
 		prob_full_insured = NULL
 
@@ -1042,7 +1054,7 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 		lower_threshold = pnorm(0, mean = beta_gamma[i], sd = s_gamma) 
 		random_draw_here = runif(1)
 		gamma[i] = qnorm(lower_threshold * (1 - random_draw_here) + 1 * random_draw_here) * s_gamma + beta_gamma[i]; 
-		if (is.infinite(gamma[i])) {
+		if (is.infinite(gamma[i]) | (gamma[i] < 0)) {
 			gamma[i] = 0
 		}
 	}
@@ -1054,7 +1066,7 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 		lower_threshold = pnorm(0, mean = beta_delta[i], sd = s_delta) 
 		random_draw_here = runif(1)
 		delta[i] = qnorm(lower_threshold * (1 - random_draw_here) + 1 * random_draw_here) * s_delta + beta_delta[i]; 
-		if (is.infinite(delta[i])) {
+		if (is.infinite(delta[i]) | (delta[i] < 0)) {
 			delta[i] = 0
 		}
 	}
@@ -1075,7 +1087,7 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 	lower_threshold = pnorm(0, mean = beta_omega, sd = s_omega)
 	random_draw_here = runif(1)
 	omega = qnorm(lower_threshold * (1 - random_draw_here) + random_draw_here) * s_omega + beta_omega
-	if (is.infinite(omega)) {
+	if (is.infinite(omega) | (omega < 0)) {
 		omega = 0
 	}
 
@@ -1121,7 +1133,7 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 	lower_threshold = pnorm(0, mean = beta_r, sd = s_r)
 
 	r = qnorm(lower_threshold * (1 - random_draw_here) + random_draw_here) * s_r + beta_r
-	if (is.infinite(r) | r < 0) {
+	if (is.infinite(r) | (r < 0)) {
 		r = 0
 	}
 	
