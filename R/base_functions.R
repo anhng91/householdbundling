@@ -594,7 +594,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 				u_lowerbar = 0
 			}
 
-			U_full_insurance = cara(U_full_insurance_without_ulowerbar * (R_draw[[1]] > 0) + (R_draw[[1]] == 0) * (income_vec[1 + length(elig_member_index)] - rowSums(theta_draw * kappa_draw[[1]]) + u_lowerbar))
+			U_full_insurance = (U_full_insurance_without_ulowerbar * (R_draw[[1]] > 0) + (R_draw[[1]] == 0) * (income_vec[1 + length(elig_member_index)] - rowSums(theta_draw * kappa_draw[[1]]) + u_lowerbar))
 
 			U_drop = list()
 
@@ -625,7 +625,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 				}
 
 
-				root_r_optimize = optimize(fr, c(-1,1))
+				root_r_optimize = optimize(fr, c(-2,2))
 				if (is.na(root_r_optimize$objective)) {
 					theta_draw[which(is.na(U_full_insurance)),] %>% print
 				}
@@ -1140,11 +1140,13 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 	s_r = exp(param$sigma_r)
 	lower_threshold = pnorm(0, mean = beta_r, sd = s_r)
 
-	r = qnorm(lower_threshold * (1 - random_draw_here) + random_draw_here) * s_r + beta_r
-	if (is.infinite(r) | (r < 0)) {
-		r = 0
-	}
+	# r = qnorm(lower_threshold * (1 - random_draw_here) + random_draw_here) * s_r + beta_r
+	# if (is.infinite(r) | (r < 0)) {
+	# 	r = 0
+	# }
 	
+	r = qnorm(random_draw_here) * s_r + beta_r
+
 	
 	
 	kappa_draw = list(); 
@@ -1269,7 +1271,7 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 		} else {
 			init_val = -0.1
 
-			if (f_wtp(init_val) < unlist(U)[1]) {
+			if ((f_wtp(init_val) < unlist(U)[1]) & (f_wtp(0) >= unlist(U)[1])) {
 				wtp = uniroot(function(x) {
 				return(f_wtp(x) - unlist(U)[1])
 				}, c(0, init_val))$root
