@@ -625,20 +625,21 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 				}
 
 
-				root_r_optimize = optimize(fr, c(-2,2))
+				root_r_optimize = optimize(fr, c(-1,1))
 				if (is.na(root_r_optimize$objective)) {
 					theta_draw[which(is.na(U_full_insurance)),] %>% print
 				}
-				if (root_r_optimize$objective < 1e-10) {
-					root_r[i] = root_r_optimize$minimum
-				} else {
-					if ((mean(U_full_insurance) - mean(U_drop[[i + 1]])) > 0) {
-						root_r[i] = -2
-					} else {
-						root_r[i] = 2
-					}
+				root_r[i] = root_r_optimize$minimum
+				# if (root_r_optimize$objective < 1e-10) {
+				# 	root_r[i] = root_r_optimize$minimum
+				# } else {
+				# 	if ((mean(U_full_insurance) - mean(U_drop[[i + 1]])) > 0) {
+				# 		root_r[i] = -2
+				# 	} else {
+				# 		root_r[i] = 2
+				# 	}
 
-				}
+				# }
 			}
 			root_r_vec[j] = max(root_r, na.rm=TRUE)
 			prob_full_insured[j] = 1 - pnorm(root_r_vec[j], mean = X_hh %*% param$beta_r, sd = exp(param$sigma_r))
