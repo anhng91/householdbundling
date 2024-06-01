@@ -633,9 +633,9 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 					root_r[i] = root_r_optimize$minimum
 				} else {
 					if ((mean(U_full_insurance) - mean(U_drop[[i + 1]])) > 0) {
-						root_r[i] = -4
+						root_r[i] = -2
 					} else {
-						root_r[i] = 4
+						root_r[i] = 2
 					}
 
 				}
