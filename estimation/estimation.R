@@ -217,8 +217,6 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
     }
 
     output_1 = do.call('c', lapply(moment_ineligible_hh_output, function(x) x[[1]]))
-    print('predicted');print(summary(output_1))
-    print('actual'); print(summary(mat_M[,1]))
     output_2 = do.call('c', lapply(moment_ineligible_hh_output, function(x) x[[2]]))
     d_output_1 = list();
     d_output_2 = list();
