@@ -595,7 +595,8 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 			}
 
 			U_full_insurance = (U_full_insurance_without_ulowerbar * (R_draw[[1]] > 0) + (R_draw[[1]] == 0) * (income_vec[1 + length(elig_member_index)] - rowSums(theta_draw * kappa_draw[[1]]) + u_lowerbar))
-
+			# print('utility with fully insured')
+			# print(summary(U_full_insurance))
 			U_drop = list()
 
 			root_r = NULL
@@ -615,7 +616,8 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 				}
 
 				U_drop[[i+1]] =  U_without_ulowerbar * (R_draw[[i + 1]] > 0) + (R_draw[[i + 1]] == 0) * (income_vec[length(elig_member_index)] - rowSums(theta_draw * kappa_draw[[i+1]]) + u_lowerbar) 
-				
+				# print(paste0('utility if drop member', i))
+				# print(summary(U_drop[[i + 1]]))
 				fr = function(r) {
 					if (r != 0) {
 						return((mean((1 - exp(-r * U_full_insurance))/r) - mean((1 - exp(-r * U_drop[[i+1]]))/r))^2)
@@ -625,7 +627,8 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 				}
 
 
-				root_r_optimize = optimize(fr, c(-1,1))
+				root_r_optimize = optimize(fr, c(-100,100))
+				# print(root_r_optimize)
 				if (is.na(root_r_optimize$objective)) {
 					theta_draw[which(is.na(U_full_insurance)),] %>% print
 				}
@@ -634,9 +637,9 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 				# 	root_r[i] = root_r_optimize$minimum
 				# } else {
 				# 	if ((mean(U_full_insurance) - mean(U_drop[[i + 1]])) > 0) {
-				# 		root_r[i] = -2
+				# 		root_r[i] = -1
 				# 	} else {
-				# 		root_r[i] = 2
+				# 		root_r[i] = 1
 				# 	}
 
 				# }
@@ -1282,8 +1285,6 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 				}, c(0,-1))$minimum
 				print(abs(f_wtp(wtp) - unlist(U)[1]))
 			}
-			
-			
 			
 		}
 

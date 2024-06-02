@@ -454,7 +454,7 @@ param_trial = compute_inner_loop(-3, return_result=TRUE)
 initial_param_trial = param_trial; 
 
 estimate_r_thetabar = optimize(function(xs) {
-  output = try(compute_inner_loop(xs))
+  output = try(compute_inner_loop(xs, return_result=FALSE, estimate_theta=FALSE, estimate_pref=FALSE))
   if ('try-error' %in% class(output)) {
     return(NA)
   } else {
