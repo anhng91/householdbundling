@@ -1144,12 +1144,12 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 	s_r = exp(param$sigma_r)
 	lower_threshold = pnorm(0, mean = beta_r, sd = s_r)
 
-	# r = qnorm(lower_threshold * (1 - random_draw_here) + random_draw_here) * s_r + beta_r
-	# if (is.infinite(r) | (r < 0)) {
-	# 	r = 0
-	# }
+	r = qnorm(lower_threshold * (1 - random_draw_here) + random_draw_here) * s_r + beta_r
+	if (is.infinite(r) | (r < 0)) {
+		r = 0
+	}
 	
-	r = qnorm(random_draw_here) * s_r + beta_r
+	# r = qnorm(random_draw_here) * s_r + beta_r
 
 	
 	

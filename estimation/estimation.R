@@ -81,9 +81,9 @@ message('bootstrapping indices')
 set.seed(job_index);
 sample_index = sample(1:length(data_hh_list), length(data_hh_list), replace=TRUE)
 sample_r_theta = Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, function(x) ifelse(nrow(data_hh_list[[x]]) <= 4, x, NA)))))]
-sample_r_theta = sample(sample_r_theta, 10, replace=TRUE)
-sample_identify_pref = sample(sample_identify_pref, 10,  replace=TRUE)
-sample_identify_theta = sample(sample_identify_theta, 50,  replace=TRUE)
+sample_r_theta = sample(sample_r_theta, 500, replace=TRUE)
+sample_identify_pref = sample(sample_identify_pref, 100,  replace=TRUE)
+sample_identify_theta = sample(sample_identify_theta, 100,  replace=TRUE)
 # sample_r_theta = sample(sample_r_theta, length(sample_r_theta), replace=TRUE)
 # sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
 # sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
@@ -217,8 +217,8 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
     }
 
     output_1 = do.call('c', lapply(moment_ineligible_hh_output, function(x) x[[1]]))
-    print('predicted');print(summary(output_1))
-    print('actual'); print(summary(mat_M[,1]))
+    # print('predicted');print(summary(output_1))
+    # print('actual'); print(summary(mat_M[,1]))
     output_2 = do.call('c', lapply(moment_ineligible_hh_output, function(x) x[[2]]))
     d_output_1 = list();
     d_output_2 = list();
@@ -279,7 +279,7 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
     }
     
     moment_realized_expense_val = do.call('c', lapply(moment_realized_expense, function(x) x[[1]])) %>% mean
-    print(paste0('moment from theta = ', moment_realized_expense_val))
+    # print(paste0('moment from theta = ', moment_realized_expense_val))
     moment_realized_expense_deriv = rep(0, length(param_trial));
     moment_realized_expense_deriv[x_transform[[2]]$beta_theta] = do.call('rbind', lapply(moment_realized_expense, function(x) x[[2]]$beta_theta)) %>% colMeans
     moment_realized_expense_deriv[x_transform[[2]]$beta_theta_ind] = do.call('rbind', lapply(moment_realized_expense, function(x) x[[2]]$beta_theta_ind)) %>% colMeans
