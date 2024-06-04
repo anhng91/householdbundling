@@ -404,11 +404,11 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
     }
   }
 
-  init_val = fx_r(rep(0,9)); 
+  init_val = fx_r(rep(0,length(x_transform[[2]]$beta_r) + 2)); 
   if (is.nan(init_val) | is.na(init_val)) {
     return(NA)
   }
-  optim_r = optim(rep(0,9), function(x) fx_r(x, silent=TRUE), control=list(maxit=1000), method='Nelder-Mead') 
+  optim_r = optim(rep(0,length(x_transform[[2]]$beta_r) + 2), function(x) fx_r(x, silent=TRUE), control=list(maxit=1000), method='Nelder-Mead') 
 
   fx_r(optim_r$par, silent=FALSE)
 
