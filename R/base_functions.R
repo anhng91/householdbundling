@@ -979,7 +979,7 @@ transform_param = function(param_trial, return_index=FALSE, init=FALSE) {
 	index = list()
 	
 	if (init) {
-		param_trial = rep(0, 100); 
+		param_trial = rep(0, 200); 
 	}
 
 	start = 1; end = start + ncol(var_ind(data_hh_list[[1]])) + 4 -1; param$beta_theta = param_trial[start:end];  index$beta_theta = c(start:end)
