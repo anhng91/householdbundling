@@ -71,7 +71,7 @@ fit_values = as.data.frame(fit_values)
 fit_values$Y2 <- as.numeric(Hmisc::cut2(fit_values$Y, g=5))
 
 observed_data_voluntary = as.data.frame(observed_data_voluntary)
-observed_data_voluntary$Y2 <- as.numeric(Hmisc::cut2(observed_data_voluntary$Income/observed_data_voluntary$HHsize, g=5))
+observed_data_voluntary$Y2 <- as.numeric(Hmisc::cut2(observed_data_voluntary$Income, g=5))
 
 predicted_data_summary = fit_values %>% group_by(Y2) %>% summarise(mean_Vol_sts = mean(vol_sts_counterfactual), mean_m = mean(m))
 predicted_data_summary$type = 'predicted'

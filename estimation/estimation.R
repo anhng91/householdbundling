@@ -377,21 +377,23 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
     correlation = x_r[length(x_r)]
     mean_vec = rep(X_hh_theta_r %*% x_r[1:(length(x_r)-2)], each = n_halton_at_r) + correlation * hh_theta
     prob = pnorm((root_r -mean_vec)/sd)
-    prob[which(root_r == 4)] = 1
     prob[which(root_r < 0)] = 0
     prob[which(root_r >= 0)] = (prob[which(root_r >= 0)] -pnorm(- mean_vec[which(root_r >= 0)]/sd)) /(1 - pnorm(- mean_vec[which(root_r >= 0)]/sd))
     prob[which(is.na(prob))] = 1;
 
     # output = - sum(log(matrix(prob, nrow = n_halton_at_r) %>% colMeans + 1e-20) * full_insurance_indicator + log(matrix(1 - prob, nrow = n_halton_at_r) %>% colMeans + 1e-20) * (1 - full_insurance_indicator))    
-    output = sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * mat_Y_rtheta^2) + 
-      sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * mean_theta_R^2) +
-      sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * min_theta_R^2) + 
-      sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * max_theta_R^2) + 
-      sum((full_insurance_indicator - (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))^2 * n_involuntary^2)
+    predicted_prob = (matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans); 
+    relevant_index = which(predicted_prob < 1 & predicted_prob > 0)
+
+    output = sum((full_insurance_indicator[relevant_index] - (predicted_prob[relevant_index]))^2 * mat_Y_rtheta[relevant_index]^2) + 
+      sum((full_insurance_indicator[relevant_index] - (predicted_prob[relevant_index]))^2 * mean_theta_R[relevant_index]^2) +
+      sum((full_insurance_indicator[relevant_index] - (predicted_prob[relevant_index]))^2 * min_theta_R[relevant_index]^2) + 
+      sum((full_insurance_indicator[relevant_index] - (predicted_prob[relevant_index]))^2 * max_theta_R[relevant_index]^2) + 
+      sum((full_insurance_indicator[relevant_index] - (predicted_prob[relevant_index]))^2 * n_involuntary[relevant_index]^2)
 
     if (!silent) {
       print('actual insurance = '); print(summary(full_insurance_indicator))
-      print('predicted insurance '); print(summary(matrix((1 - prob),nrow=n_halton_at_r) %>% colMeans))
+      print('predicted insurance '); print(summary(predicted_prob))
       print('x_r = '); print(x_r);
       print('output = '); print(output);
     }
@@ -420,7 +422,6 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
       correlation = optim_r$par[length(optim_r$par)]
       mean_vec = rep(X_hh_theta_r %*% optim_r$par[1:(length(optim_r$par)-2)], each = n_halton_at_r) + correlation * hh_theta
       prob = pnorm((root_r -mean_vec)/sd)
-      prob[which(root_r == 4)] = 1
       prob[which(root_r < 0)] = 0
       prob[which(root_r >= 0)] = (prob[which(root_r >= 0)] -pnorm(- mean_vec[which(root_r >= 0)]/sd)) /(1 - pnorm(- mean_vec[which(root_r >= 0)]/sd))
       prob[which(is.na(prob))] = 1;
@@ -481,3 +482,41 @@ if (dir.exists('../../householdbundling_estimate')) {
   saveRDS(param_final, file=paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
 }
 
+transform_param_final = transform_param(param_final$other)
+
+if (Sys.info()[['sysname']] == 'Windows') {
+  clusterExport(cl, c('transform_param_final', 'param','counterfactual_household_draw_theta_kappa_Rdraw'))
+  fit_values = parLapply(cl, sample_r_theta, function(id) {
+  output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
+  output = as.data.frame(output)
+  output$Y = data_hh_list[[id]]$Income; 
+  output$m_observed = data_hh_list[[id]]$M_expense; 
+  return(output)
+  })
+} else {
+  fit_values = mclapply(sample_r_theta, function(id) {
+  output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
+  output = as.data.frame(output)
+  output$Y = data_hh_list[[id]]$Income; 
+  output$m_observed = data_hh_list[[id]]$M_expense; 
+  return(output)}, mc.cores=numcores)
+}
+
+fit_values = do.call('rbind', fit_values)
+
+observed_data_voluntary = do.call('rbind', data_hh_list[sample_r_theta])
+
+fit_values = as.data.frame(fit_values)
+fit_values$Y2 <- as.numeric(Hmisc::cut2(fit_values$Y, g=5))
+
+observed_data_voluntary = as.data.frame(observed_data_voluntary)
+observed_data_voluntary$Y2 <- as.numeric(Hmisc::cut2(observed_data_voluntary$Income, g=5))
+
+predicted_data_summary = fit_values %>% group_by(Y2) %>% summarise(mean_Vol_sts = mean(vol_sts_counterfactual), mean_m = mean(m))
+predicted_data_summary$type = 'predicted'
+actual_data_summary = observed_data_voluntary %>% group_by(Y2) %>% summarise(mean_Vol_sts = mean(Vol_sts), mean_m = mean(M_expense))
+actual_data_summary$type = 'actual'
+
+plot_1 = ggplot(data = rbind(predicted_data_summary, actual_data_summary), aes(x = Y2, y = mean_Vol_sts, color=type)) + geom_line() 
+plot_2 = ggplot(data = rbind(predicted_data_summary, actual_data_summary), aes(x = Y2, y = mean_m, color=type)) + geom_line() 
+gridExtra::grid.arrange(plot_1, plot_2, nrow=1)

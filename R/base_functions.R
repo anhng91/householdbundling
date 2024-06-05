@@ -693,7 +693,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 
 var_ind = function(data_mini) {
 	output = data_mini %>% mutate(relationship_2 = relationship == 2, relationship_3 = relationship == 3, relationship_4 = relationship == 4, relationship_5 = relationship == 5, age2_female = female * age2) %>% select(age2, age3, age4, age5, relationship_2, relationship_3, relationship_4, relationship_5, indshare, employed, female, married, college, age2_female)
-	return(cbind(1,as.matrix(output), data_mini$Income[1]/data_mini$HHsize[1] < 0,  data_mini$Income[1]/data_mini$HHsize[1] < 0.35 &  data_mini$Income[1]/data_mini$HHsize[1] >= 0, data_mini$Income[1] /data_mini$HHsize[1] >= 0.35))
+	return(cbind(1,as.matrix(output)))
 }
 
 #' Compute the matrix representing household characteristics of a household.
@@ -709,7 +709,7 @@ var_ind = function(data_mini) {
 #'
 var_hh = function(data_mini) {
 	output = data_mini %>% mutate(HHtype_2 = HHtype == 2, HHtype_3 = HHtype == 3, Year_2006 = Year == 2006, Year_2008 = Year == 2008, Year_2010 = Year == 2010, Year_2012= Year == 2012) %>% mutate(HHsize = HHsize/4) %>% select(HHtype_2, HHtype_3, HHsize, hhfemale, hhmaxage, hhavgeduc) %>% slice(1)
-	return(cbind(1,as.matrix(output),data_mini$Income[1]/data_mini$HHsize[1] < 0,  data_mini$Income[1]/data_mini$HHsize[1] < 0.35 &  data_mini$Income[1]/data_mini$HHsize[1] >= 0, data_mini$Income[1] /data_mini$HHsize[1] >= 0.35))
+	return(cbind(1,as.matrix(output)))
 }
 
 
