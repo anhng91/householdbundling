@@ -3,12 +3,19 @@ library(tidyverse)
 
 data = read.csv('data-raw/raw_data.csv')
 
-unit_inc = data %>% group_by(hhid,Year) %>% slice(1) %>% select(Income) %>% unlist() %>% max(); 
+unit_inc = data %>% group_by(hhid,Year) %>% slice(1) %>% select(Income) %>% unlist() %>% mean(); 
+upper_bound = data %>% group_by(hhid,Year) %>% slice(1) %>% select(Income) %>% unlist() %>% quantile(0.975); 
+lower_bound = data %>% group_by(hhid,Year) %>% slice(1) %>% select(Income) %>% unlist() %>% quantile(0.025);
+
+data = data %>% filter(Income < upper_bound & Income > lower_bound)
+
 age_hh_mean = data %>% group_by(hhid, Year) %>% slice(1) %>% select(hhage) %>% unlist() %>% mean();
 age_hh_sd = data %>% group_by(hhid, Year) %>% slice(1) %>% select(hhage) %>% unlist() %>% sd();
 age_hh_max_mean = data %>% group_by(hhid, Year) %>% slice(1) %>% select(hhmaxage) %>% unlist() %>% mean();
 age_hh_max_sd = data %>% group_by(hhid, Year) %>% slice(1) %>% select(hhmaxage) %>% unlist() %>% sd(); 
 data = data %>% mutate(hhage = (hhage - age_hh_mean)/age_hh_sd) %>% mutate(hhmaxage = (hhmaxage - age_hh_max_mean)/age_hh_max_sd)
+
+
 
 data$lnhhavginc = data$lnhhavginc - log(unit_inc); 
 data$hhavgeduc = (data$hhavgeduc -  mean(data$hhavgedu))/sd(data$hhavgedu); 
@@ -35,7 +42,7 @@ geographic_dummy = cbind(data$geo2, data$geo3, data$geo4);
 
 age_dummy = cbind(data$age2, data$age3, data$age4, data$age5); 
 
-indshare = data$indincome/unit_inc / data$Income;
+data$indshare = data$indincome/unit_inc / data$Income;
 
 
 time_dummy = cbind(data$year3, data$year4, data$year5, data$year6);
@@ -122,9 +129,9 @@ data$student[which(data$study == 1 | data$studying == 1)] = 1;
   		return(output);  
   	}
 
-  	data$HHsize_s = data$HHsize - data$N_bef - data$N_com - data$Std_w_ins; 
+  	data$HHsize_s = data$HHsize - data$N_bef - data$N_com - data$N_std_w_ins; 
 	Premium_fun_hh <- function(data_hh_i,...) { 
-		output = lapply(1:data_hh_i$HHsize_s[1], function(n_i) data_hh_i$Income[1] - Premium_fun(n_i, data_hh_i$Year[1], data_hh_i$Baseprice[1], 
+		output = lapply(0:data_hh_i$HHsize_s[1], function(n_i) data_hh_i$Income[1] - Premium_fun(n_i, data_hh_i$Year[1], data_hh_i$Baseprice[1], 
 			data_hh_i$HHtype[1], data_hh_i$HHsize_s[1]) - data_hh_i$Baseprice_s[1] * data_hh_i$N_std_w_ins[1]);
 		return(unlist(output));
 	}      	

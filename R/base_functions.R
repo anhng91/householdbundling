@@ -427,7 +427,6 @@ all_insurance = function(vec_) {
 #'
 #' @examples
 #' household_draw_theta_kappa_Rdraw(1, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample)
-#' 
 household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 1000, n_draw_gauss = 10, sick_parameters, xi_parameters, u_lowerbar = -10, short=TRUE) {
 	set.seed(1);
 	data_hh_i = data_hh_list[[hh_index]]; 
@@ -627,11 +626,11 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 				}
 
 
-				root_r_optimize = optimize(fr, c(-100,100))
+				root_r_optimize = optimize(fr, c(-1,1))
 				# print(root_r_optimize)
-				if (is.na(root_r_optimize$objective)) {
-					theta_draw[which(is.na(U_full_insurance)),] %>% print
-				}
+				# if (is.na(root_r_optimize$objective)) {
+				# 	theta_draw[which(is.na(U_full_insurance)),] %>% print
+				# }
 				root_r[i] = root_r_optimize$minimum
 				# if (root_r_optimize$objective < 1e-10) {
 				# 	root_r[i] = root_r_optimize$minimum

@@ -430,11 +430,11 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
       prob = pnorm((root_r -mean_vec)/sd)
       prob[which(root_r < 0)] = 0
       prob[which(root_r >= 0)] = (prob[which(root_r >= 0)] -pnorm(- mean_vec[which(root_r >= 0)]/sd)) /(1 - pnorm(- mean_vec[which(root_r >= 0)]/sd))
-      prob[which(is.na(prob))] = 1;
+      prob[which(is.na(prob))] = 0;
       if (sum(prob) == 0) {
         Em = NA
       } else {
-        Em = colSums(apply(output_hh$m, 2, function(x) x * (1 - prob)/sum(1 - prob)))
+        Em = colSums(apply(output_hh$m, 2, function(x) x * (1 - prob)/(sum(1 - prob) + 1e-20)))
       }
       return(Em)
     }))
@@ -472,8 +472,8 @@ estimate_r_thetabar = optimize(function(xs) {
 }, c(-6,1)) 
 
 
-# param_trial = compute_inner_loop(estimate_r_thetabar$minimum, return_result=TRUE, estimate_theta=TRUE, estimate_pref = TRUE)
-param_trial = compute_inner_loop(-1, return_result=TRUE, estimate_theta=TRUE, estimate_pref = TRUE)
+param_trial = compute_inner_loop(estimate_r_thetabar$minimum, return_result=TRUE, estimate_theta=TRUE, estimate_pref = TRUE)
+# param_trial = compute_inner_loop(-3, return_result=TRUE, estimate_theta=FALSE, estimate_pref = FALSE)
 
 message('computing final param_trial')
 
