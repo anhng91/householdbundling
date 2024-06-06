@@ -492,8 +492,6 @@ if (dir.exists('../../householdbundling_estimate')) {
 param = param_final 
 transform_param_final = transform_param(param_final$other)
 
-chim = function(just_r) {
-  transform_param_final$beta_r = just_r
 if (Sys.info()[['sysname']] == 'Windows') {
   clusterExport(cl, c('transform_param_final', 'param','counterfactual_household_draw_theta_kappa_Rdraw'))
   fit_values = parLapply(cl, sample_r_theta, function(id) {
@@ -530,5 +528,3 @@ actual_data_summary$type = 'actual'
 plot_1 = ggplot(data = rbind(predicted_data_summary, actual_data_summary), aes(x = Y2, y = mean_Vol_sts, color=type)) + geom_line() 
 plot_2 = ggplot(data = rbind(predicted_data_summary, actual_data_summary), aes(x = Y2, y = mean_m, color=type)) + geom_line() 
 plot = gridExtra::grid.arrange(plot_1, plot_2, nrow=1)
-return(plot)
-}
