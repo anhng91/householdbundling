@@ -1,5 +1,7 @@
 ## code to prepare `raw_data` dataset goes here
-data = read.csv('raw_data.csv')
+library(tidyverse)
+
+data = read.csv('data-raw/raw_data.csv')
 
 unit_inc = data %>% group_by(hhid,Year) %>% slice(1) %>% select(Income) %>% unlist() %>% max(); 
 age_hh_mean = data %>% group_by(hhid, Year) %>% slice(1) %>% select(hhage) %>% unlist() %>% mean();
