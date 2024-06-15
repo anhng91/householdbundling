@@ -1,6 +1,10 @@
 args = commandArgs(trailingOnly=TRUE)
 if (length(args)<2) { 
-  numcores = 4;
+  if (Sys.info()[['sysname']] == 'Windows') {
+    numcores = 24;
+  } else {
+    numcores = 4;
+  }
   job_index = 1;  
 } else {
   job_index = as.numeric(args[1]);
