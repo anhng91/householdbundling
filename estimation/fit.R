@@ -1,6 +1,6 @@
 args = commandArgs(trailingOnly=TRUE)
 if (length(args)<2) { 
-  numcores = 24;
+  numcores = 4;
   job_index = 1;  
 } else {
   job_index = as.numeric(args[1]);

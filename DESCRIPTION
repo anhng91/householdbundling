@@ -25,7 +25,8 @@ Imports:
     randomForest,
     splitfngr,
     Hmisc,
-    gridExtra
+    gridExtra,
+    fastDummies
 Depends: 
     R (>= 2.10)
 LazyData: true

@@ -1,6 +1,6 @@
 args = commandArgs(trailingOnly=TRUE)
 if (length(args)<2) { 
-  numcores = 10;
+  numcores = 4;
   job_index = 1;  
 } else {
   job_index = as.numeric(args[1]);
@@ -19,6 +19,7 @@ library(stargazer)
 library(parallel)
 library(randomForest)
 library(randtoolbox)
+library(fastDummies)
 
 # setwd('./familyenrollment')
 devtools::install(upgrade='never')
@@ -84,7 +85,7 @@ sample_r_theta = Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, funct
 # sample_r_theta = sample(sample_r_theta, 500, replace=TRUE)
 # sample_identify_pref = sample(sample_identify_pref, 100,  replace=TRUE)
 # sample_identify_theta = sample(sample_identify_theta, 100,  replace=TRUE)
-sample_r_theta = sample(sample_r_theta, 2000, replace=TRUE)
+sample_r_theta = sample(sample_r_theta, length(sample_r_theta), replace=TRUE)
 sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
 sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 
@@ -176,7 +177,7 @@ n_involuntary = do.call('c', lapply(sample_r_theta, function(output_hh_index) da
 n_halton_at_r = 100; 
 
 param_trial[x_transform[[2]]$beta_theta[1]] = 0
-param_trial[x_transform[[2]]$beta_omega[1]] = 1
+param_trial[x_transform[[2]]$beta_omega[1]] = 0.2
 
 initial_param_trial = param_trial
 
@@ -207,6 +208,11 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
           }, mc.cores=numcores))
     }
 
+    income_mat = as.numeric(Hmisc::cut2(t(mat_YK)[,3], g=5))
+    dummy_mat = (fastDummies::dummy_cols(income_mat))[,-1]
+    mat_YK_modify = cbind(mat_YK[1,], mat_YK[2,], dummy_mat, apply(dummy_mat, 2, function(x) x * mat_YK[1,]))
+    mat_YK = t(mat_YK_modify)
+
     if (Sys.info()[['sysname']] == 'Windows') {
       clusterExport(cl, 'x_transform',envir=environment())
       moment_ineligible_hh_output = parLapply(cl, data_hh_list_pref,function(mini_data) {
@@ -218,6 +224,8 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
     }
 
     output_1 = do.call('c', lapply(moment_ineligible_hh_output, function(x) x[[1]]))
+
+    print(summary(lm(mat_M[,1] ~ output_1)))
     # print('predicted');print(summary(output_1))
     # print('actual'); print(summary(mat_M[,1]))
     output_2 = do.call('c', lapply(moment_ineligible_hh_output, function(x) x[[2]]))
@@ -237,15 +245,15 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
     d_moment = list()
     output = list(); 
     output[[3]] = list();
-    for (moment_index in c(1:5)) {
+    for (moment_index in c(1:nrow(mat_YK))) {
       output[[3]][[moment_index]] = ((output_1 - mat_M[,1]) * mat_YK[moment_index,])^2
       moment[moment_index] = mean(output[[3]][[moment_index]]); 
       d_moment[[moment_index]] = 2*((output_1 - mat_M[,1]) * mat_YK[moment_index,]);
     }
-    for (moment_index in c(1:5)) {
-      output[[3]][[moment_index + 5]] = ((output_2 - mat_M[,2]) * mat_YK[moment_index,])^2
-      moment[moment_index + 5] = mean(output[[3]][[moment_index + 5]]); 
-      d_moment[[moment_index + 5]] = 2*((output_2 - mat_M[,2]) * mat_YK[moment_index,]);
+    for (moment_index in c(1:nrow(mat_YK))) {
+      output[[3]][[moment_index + nrow(mat_YK)]] = ((output_2 - mat_M[,2]) * mat_YK[moment_index,])^2
+      moment[moment_index + nrow(mat_YK)] = mean(output[[3]][[moment_index + nrow(mat_YK)]]); 
+      d_moment[[moment_index + nrow(mat_YK)]] = 2*((output_2 - mat_M[,2]) * mat_YK[moment_index,]);
     }
 
     d_moment = do.call('cbind', d_moment)
@@ -254,13 +262,13 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
     active_index_pref = x_transform[[2]][var_list] %>% unlist()
     output[[2]] = rep(0, length(active_index_pref)); 
 
-    output[[2]][x_transform[[2]][['beta_delta']]] = apply(d_output_1[['beta_delta']], 1, function(x) sum((x %*% d_moment[,1:5])/length(x))) + apply(d_output_2[['beta_delta']], 1, function(x) sum((x %*% d_moment[,6:10])/length(x)))
-    output[[2]][x_transform[[2]][['beta_omega']]] = apply(d_output_1[['beta_omega']], 1, function(x) sum((x %*% d_moment[,1:5])/length(x))) + apply(d_output_2[['beta_omega']], 1, function(x) sum((x %*% d_moment[,6:10])/length(x)))
-    output[[2]][x_transform[[2]][['beta_gamma']]] = apply(d_output_1[['beta_gamma']], 1, function(x) sum((x %*% d_moment[,1:5])/length(x))) + apply(d_output_2[['beta_gamma']], 1, function(x) sum((x %*% d_moment[,6:10])/length(x)))
+    output[[2]][x_transform[[2]][['beta_delta']]] = apply(d_output_1[['beta_delta']], 1, function(x) sum((x %*% d_moment[,1:nrow(mat_YK)])/length(x))) + apply(d_output_2[['beta_delta']], 1, function(x) sum((x %*% d_moment[,(nrow(mat_YK) + 1):(2 * nrow(mat_YK))])/length(x)))
+    output[[2]][x_transform[[2]][['beta_omega']]] = apply(d_output_1[['beta_omega']], 1, function(x) sum((x %*% d_moment[,1:nrow(mat_YK)])/length(x))) + apply(d_output_2[['beta_omega']], 1, function(x) sum((x %*% d_moment[,(nrow(mat_YK) + 1):(2 * nrow(mat_YK))])/length(x)))
+    output[[2]][x_transform[[2]][['beta_gamma']]] = apply(d_output_1[['beta_gamma']], 1, function(x) sum((x %*% d_moment[,1:nrow(mat_YK)])/length(x))) + apply(d_output_2[['beta_gamma']], 1, function(x) sum((x %*% d_moment[,(nrow(mat_YK) + 1):(2 * nrow(mat_YK))])/length(x)))
 
-    output[[2]][x_transform[[2]][['sigma_delta']]] =  sum((d_output_1[['sigma_delta']] %*% d_moment[,1:5])/length(active_index)) + sum((d_output_2[['sigma_delta']] %*% d_moment[,6:10])/length(active_index))
-    output[[2]][x_transform[[2]][['sigma_gamma']]] =  sum((d_output_1[['sigma_gamma']] %*% d_moment[,1:5])/length(active_index)) + sum((d_output_2[['sigma_gamma']] %*% d_moment[,6:10])/length(active_index))
-    output[[2]][x_transform[[2]][['sigma_omega']]] =  sum((d_output_1[['sigma_omega']] %*% d_moment[,1:5])/length(active_index)) + sum((d_output_2[['sigma_omega']] %*% d_moment[,6:10])/length(active_index))
+    output[[2]][x_transform[[2]][['sigma_delta']]] =  sum((d_output_1[['sigma_delta']] %*% d_moment[,1:nrow(mat_YK)])/length(active_index)) + sum((d_output_2[['sigma_delta']] %*% d_moment[,(nrow(mat_YK) + 1):(2 * nrow(mat_YK))])/length(active_index))
+    output[[2]][x_transform[[2]][['sigma_gamma']]] =  sum((d_output_1[['sigma_gamma']] %*% d_moment[,1:nrow(mat_YK)])/length(active_index)) + sum((d_output_2[['sigma_gamma']] %*% d_moment[,(nrow(mat_YK) + 1):(2 * nrow(mat_YK))])/length(active_index))
+    output[[2]][x_transform[[2]][['sigma_omega']]] =  sum((d_output_1[['sigma_omega']] %*% d_moment[,1:nrow(mat_YK)])/length(active_index)) + sum((d_output_2[['sigma_omega']] %*% d_moment[,(nrow(mat_YK) + 1):(2 * nrow(mat_YK))])/length(active_index))
 
     output[[2]] = output[[2]][active_index_pref]
     output[[3]] = do.call('cbind', output[[3]])
@@ -306,6 +314,10 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
       if (max(abs(x_pref_theta)) > 10) {
         return(list(NA, rep(NA, length(active_index))))
       }
+      output_theta = aggregate_moment_theta(x_transform)
+      if (is.nan(output_theta[[1]])) {
+        return(list(NA, rep(NA, length(active_index))))
+      }
       param_trial_inner_theta = param_trial_here
       param_trial_inner_theta[active_index] = x_pref_theta 
       x_transform = transform_param(param_trial_inner_theta, return_index = TRUE)
@@ -331,16 +343,16 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
       output = list()
       output[[1]] =  pref_moment[[1]]
       output[[2]] =  pref_moment[[2]]
-      print(paste0('output here = ',output[[1]]))
+      print(paste0('output from preference here = ',output[[1]]))
       iteration <<- iteration + 1; 
       print(paste0('at iteration = ', iteration))
       output[[2]][length(x_pref_theta)] = output[[2]][length(x_pref_theta)] * exp(x_pref_theta[length(x_pref_theta)])/(1 + exp(x_pref_theta[length(x_pref_theta)]))^2
 
-      output_theta = aggregate_moment_theta(x_transform)
+      print(paste0('output from theta here =', output_theta[[1]]))
       output[[1]] = output[[1]] + output_theta[[1]] 
       output[[2]] = output[[2]] + output_theta[[2]][active_index] 
       return(output)
-    }, control=list(maxit=1e1), method='BFGS')
+    }, control=list(maxit=1e2), method='BFGS')
 
     param_trial_here[active_index] = optim_pref_theta$par
   }
@@ -483,13 +495,6 @@ param_final$other = param_trial;
 param_final$xi = xi_parameters;
 param_final$sick = sick_parameters
 
-if (dir.exists('../../householdbundling_estimate')) {
-  saveRDS(param_final, file=paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
-} else {
-  dir.create('../../householdbundling_estimate') 
-  saveRDS(param_final, file=paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
-}
-
 param = param_final 
 transform_param_final = transform_param(param_final$other)
 
@@ -529,3 +534,12 @@ actual_data_summary$type = 'actual'
 plot_1 = ggplot(data = rbind(predicted_data_summary, actual_data_summary), aes(x = Y2, y = mean_Vol_sts, color=type)) + geom_line() 
 plot_2 = ggplot(data = rbind(predicted_data_summary, actual_data_summary), aes(x = Y2, y = mean_m, color=type)) + geom_line() 
 plot = gridExtra::grid.arrange(plot_1, plot_2, nrow=1)
+
+if (dir.exists('../../householdbundling_estimate')) {
+  saveRDS(param_final, file=paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
+  saveRDS(plot, file=paste0('../../householdbundling_estimate/estimate_fit_',job_index,'.rds'))
+} else {
+  dir.create('../../householdbundling_estimate') 
+  saveRDS(param_final, file=paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
+  saveRDS(plot, file=paste0('../../householdbundling_estimate/estimate_fit_',job_index,'.rds'))
+}
