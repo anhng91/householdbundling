@@ -42,7 +42,7 @@ Com_HH_list_index = Com_HH_list_index[!(is.na(Com_HH_list_index))]
 message('constructing the list of Voluntary households')
 Vol_HH_list_index = lapply(1:length(data_hh_list), function(hh_index) {
   data = data_hh_list[[hh_index]]; 
-  if (nrow(data) > nrow(data %>% filter(Bef_sts + Com_sts + Std_w_ins == 1))) {
+  if (nrow(data) > nrow(data %>% filter(Bef_sts + Com_sts + Std_w_ins == 1)) & !(data$Year[1] == 2006 & data$HHsize_s > 1)) {
     return(hh_index);
   }
   else {
@@ -82,9 +82,6 @@ message('bootstrapping indices')
 set.seed(job_index);
 sample_index = sample(1:length(data_hh_list), length(data_hh_list), replace=TRUE)
 sample_r_theta = Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, function(x) ifelse(nrow(data_hh_list[[x]]) <= 4, x, NA)))))]
-# sample_r_theta = sample(sample_r_theta, 500, replace=TRUE)
-# sample_identify_pref = sample(sample_identify_pref, 100,  replace=TRUE)
-# sample_identify_theta = sample(sample_identify_theta, 100,  replace=TRUE)
 sample_r_theta = sample(sample_r_theta, length(sample_r_theta), replace=TRUE)
 sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
 sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
@@ -500,7 +497,7 @@ transform_param_final = transform_param(param_final$other)
 
 if (Sys.info()[['sysname']] == 'Windows') {
   clusterExport(cl, c('transform_param_final', 'param','counterfactual_household_draw_theta_kappa_Rdraw'))
-  fit_values = parLapply(cl, Vol_HH_list_index, function(id) {
+  fit_values = parLapply(cl, c(Vol_HH_list_index, Com_HH_list_index), function(id) {
   output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
   output = as.data.frame(output)
   output$Y = data_hh_list[[id]]$Income; 
@@ -508,7 +505,7 @@ if (Sys.info()[['sysname']] == 'Windows') {
   return(output)
   })
 } else {
-  fit_values = mclapply(Vol_HH_list_index, function(id) {
+  fit_values = mclapply(c(Vol_HH_list_index, Com_HH_list_index), function(id) {
   output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
   output = as.data.frame(output)
   output$Y = data_hh_list[[id]]$Income; 
@@ -518,7 +515,7 @@ if (Sys.info()[['sysname']] == 'Windows') {
 
 fit_values = do.call('rbind', fit_values)
 
-observed_data_voluntary = do.call('rbind', data_hh_list[Vol_HH_list_index])
+observed_data_voluntary = do.call('rbind', data_hh_list[c(Vol_HH_list_index, Com_HH_list_index)])
 
 fit_values = as.data.frame(fit_values)
 fit_values$Y2 <- as.numeric(Hmisc::cut2(fit_values$Y, g=5))

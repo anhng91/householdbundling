@@ -1305,10 +1305,10 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 		output$wtp = rep(wtp, HHsize)
 		output$cost_to_insurance = cost_to_insurance
 	} else {
-		output$m = m
 		output$cost_to_insurance = cost_to_insurance
 		output$average_theta = colMeans(theta_draw)
 		output$wtp = rep(0, HHsize)
+		output$vol_sts_counterfactual = 0
 	}
 
 	return(output)	
