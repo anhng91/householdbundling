@@ -46,7 +46,7 @@ Com_HH_list_index = Com_HH_list_index[!(is.na(Com_HH_list_index))]
 message('constructing the list of Voluntary households')
 Vol_HH_list_index = lapply(1:length(data_hh_list), function(hh_index) {
   data = data_hh_list[[hh_index]]; 
-  if (nrow(data) > nrow(data %>% filter(Bef_sts + Com_sts + Std_w_ins == 1) & !(data$Year[1] == 2006 & data$HHsize_s > 1))) {
+  if (nrow(data) > nrow(data %>% filter(Bef_sts + Com_sts + Std_w_ins == 1)) & !(data$Year[1] == 2006 & data$HHsize_s[1] > 1)) {
     return(hh_index);
   }
   else {
