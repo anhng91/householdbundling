@@ -95,8 +95,8 @@ if (remote) {
   sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 } else {
   sample_r_theta = sample(sample_r_theta, 100, replace=TRUE)
-  sample_identify_pref = sample(100, length(sample_identify_pref), replace=TRUE)
-  sample_identify_theta = sample(100, length(sample_identify_theta), replace=TRUE)
+  sample_identify_pref = sample(sample_identify_pref, 500, replace=TRUE)
+  sample_identify_theta = sample(sample_identify_theta, 500, replace=TRUE)
 }
 
 
