@@ -42,7 +42,9 @@ geographic_dummy = cbind(data$geo2, data$geo3, data$geo4);
 
 age_dummy = cbind(data$age2, data$age3, data$age4, data$age5); 
 
-data$indshare = data$indincome/unit_inc / data$Income;
+data$indshare = data$indincome/unit_inc/data$Income;
+data$indshare[which(data$indshare < 0)] = 0; 
+data$indshare[which(data$indshare > 1)] = 1; 
 
 
 time_dummy = cbind(data$year3, data$year4, data$year5, data$year6);
@@ -247,4 +249,5 @@ data_hh_list = data %>% group_by(hhid, Year) %>% group_split()
 usethis::use_data(policy_mat, overwrite = TRUE)
 usethis::use_data(Income_net_premium, overwrite = TRUE)
 usethis::use_data(data_hh_list, overwrite = TRUE)
+usethis::use_data(unit_inc, overwrite=TRUE)
 

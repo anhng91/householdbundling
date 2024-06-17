@@ -12,6 +12,9 @@ if (length(args)<2) {
 }
 if (dir.exists('work/teckyongtan/tecktan/Oil/Data/R_lib')) {
   .libPaths('work/teckyongtan/tecktan/Oil/Data/R_lib')
+  remote = TRUE
+} else {
+  remote = FALSE
 }
 options("install.lock"=FALSE)
 library(knitr)
@@ -86,9 +89,15 @@ message('bootstrapping indices')
 set.seed(job_index);
 sample_index = sample(1:length(data_hh_list), length(data_hh_list), replace=TRUE)
 sample_r_theta = Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, function(x) ifelse(nrow(data_hh_list[[x]]) <= 4, x, NA)))))]
-sample_r_theta = sample(sample_r_theta, length(sample_r_theta), replace=TRUE)
-sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
-sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
+if (remote) {
+  sample_r_theta = sample(sample_r_theta, length(sample_r_theta), replace=TRUE)
+  sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
+  sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
+} else {
+  sample_r_theta = sample(sample_r_theta, 100, replace=TRUE)
+  sample_identify_pref = sample(100, length(sample_identify_pref), replace=TRUE)
+  sample_identify_theta = sample(100, length(sample_identify_theta), replace=TRUE)
+}
 
 
 message('merging household frames')

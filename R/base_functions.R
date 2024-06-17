@@ -918,7 +918,7 @@ identify_theta = function(data_set, param, n_draw_halton = 1000) {
 	inner_f = function(input_vec) {
 		input_vec_transformed = transform_size_input_vec(input_vec)
 		for (i in 1:HHsize) {
-			theta_bar[, i] = halton_mat_list$individual_factor[,i] * exp(input_vec_transformed$sigma_thetabar) + input_vec_transformed$mean_beta_theta_ind + input_vec_transformed$mean_beta_theta; 
+			theta_bar[, i] = halton_mat_list$individual_factor[,i] * exp(input_vec_transformed$sigma_thetabar) + input_vec_transformed$mean_beta_theta_ind[i] * halton_mat_list$household_random_factor + input_vec_transformed$mean_beta_theta[i]; 
 		}
 		likelihood = -log(apply(theta_bar, 1, function(x) prod(dnorm(theta[theta_pos_index], mean = x[theta_pos_index], sd = exp(input_vec_transformed$sigma_theta))/(1 - pnorm(0, mean=x[theta_pos_index], sd=exp(input_vec_transformed$sigma_theta))))) %>% mean + 1e-10)
 		likelihood = ifelse(is.infinite(likelihood), -log(1e-10), likelihood) 
@@ -1087,10 +1087,12 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 	theta_bar = NULL
 
 	random_hh_factor = rnorm(1)
+	beta_theta = NULL
 
 	for (i in 1:HHsize) { 
 		random_draw_here = rnorm(1)
-		theta_bar[i] = random_draw_here * s_thetabar + random_hh_factor * (X_ind[i,] %*% param$beta_theta_ind) + t(c(X_ind[i,], data_hh_i$Year[i] == 2004, data_hh_i$Year[i] == 2006, data_hh_i$Year[i] == 2010, data_hh_i$Year[i] == 2012)) %*% param$beta_theta; 
+		theta_bar[i] = random_draw_here * s_thetabar + random_hh_factor * (X_ind[i,] %*% param$beta_theta_ind) + t(c(X_ind[i,], data_hh_i$Year[i] == 2004, data_hh_i$Year[i] == 2006, data_hh_i$Year[i] == 2010, data_hh_i$Year[i] == 2012)) %*% param$beta_theta;
+		beta_theta[i] = t(c(X_ind[i,], data_hh_i$Year[i] == 2004, data_hh_i$Year[i] == 2006, data_hh_i$Year[i] == 2010, data_hh_i$Year[i] == 2012)) %*% param$beta_theta 
 	}
 
 	beta_omega = X_hh %*% param$beta_omega 
@@ -1139,16 +1141,17 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 	}), ncol=HHsize)
 
 	random_draw_here = runif(1)
-	beta_r = X_hh %*% param$beta_r + random_hh_factor * param$correlation
+	beta_r = X_hh %*% param$beta_r
+	beta_r_w_correlation = beta_r + random_hh_factor * param$correlation
 	s_r = exp(param$sigma_r)
-	lower_threshold = pnorm(0, mean = beta_r, sd = s_r)
+	lower_threshold = pnorm(0, mean = beta_r_w_correlation, sd = s_r)
 
-	r = qnorm(lower_threshold * (1 - random_draw_here) + random_draw_here) * s_r + beta_r
+	r = qnorm(lower_threshold * (1 - random_draw_here) + random_draw_here) * s_r + beta_r_w_correlation
 	if (is.infinite(r) | (r < 0)) {
 		r = 0
 	}
 	
-	# r = qnorm(random_draw_here) * s_r + beta_r
+	# r = qnorm(random_draw_here) * s_r + beta_r_w_correlation
 
 	
 	
@@ -1298,6 +1301,13 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 	output$theta_bar = theta_bar
 	output$r = rep(r, HHsize)
 	output$gamma = gamma
+	output$beta_gamma = beta_gamma 
+	output$beta_theta = beta_theta 
+	output$beta_omega = rep(beta_omega, HHsize)
+	output$beta_r = rep(beta_r, HHsize)
+	output$beta_delta = beta_delta
+	output$vol_sts = data_hh_i$Vol_sts
+	output$Bef_sts = data_hh_i$Bef_sts; output$Com_sts = data_hh_i$Com_sts;  output$Std_w_ins = data_hh_i$Std_w_ins
 	
 	if (data_hh_i$HHsize_s[1] > 0) {
 		output$vol_sts_counterfactual = vol_sts_counterfactual

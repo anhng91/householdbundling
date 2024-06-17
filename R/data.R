@@ -71,3 +71,12 @@
 "xi_parameters_sample"
 
 
+#' unit of income in estimation
+#' 
+#' @format ## `unit_inc`
+#' a numerical value
+#' 
+#' @source raw_data
+"unit_inc"
+
+
