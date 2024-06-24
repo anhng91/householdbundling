@@ -94,9 +94,9 @@ if (remote) {
   sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
   sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 } else {
-  sample_r_theta = sample(sample_r_theta, 100, replace=TRUE)
-  sample_identify_pref = sample(sample_identify_pref, 500, replace=TRUE)
-  sample_identify_theta = sample(sample_identify_theta, 500, replace=TRUE)
+  sample_r_theta = sample(sample_r_theta, 1000, replace=TRUE)
+  sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
+  sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 }
 
 
@@ -187,7 +187,7 @@ n_involuntary = do.call('c', lapply(sample_r_theta, function(output_hh_index) da
 n_halton_at_r = 100; 
 
 param_trial[x_transform[[2]]$beta_theta[1]] = 0
-param_trial[x_transform[[2]]$beta_omega[1]] = 0.2
+# param_trial[x_transform[[2]]$beta_omega[1]] = 0.2
 
 initial_param_trial = param_trial
 
@@ -234,10 +234,11 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
     }
 
     output_1 = do.call('c', lapply(moment_ineligible_hh_output, function(x) x[[1]]))
-
-    print(summary(lm(mat_M[,1] ~ output_1)))
-    # print('predicted');print(summary(output_1))
-    # print('actual'); print(summary(mat_M[,1]))
+    if (!(is.na(sum(output_1)))) {
+      print(summary(lm(mat_M[,1] ~ output_1)))
+    }
+    print('predicted');print(summary(output_1))
+    print('actual'); print(summary(mat_M[,1]))
     output_2 = do.call('c', lapply(moment_ineligible_hh_output, function(x) x[[2]]))
     d_output_1 = list();
     d_output_2 = list();
@@ -356,13 +357,12 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
       print(paste0('output from preference here = ',output[[1]]))
       iteration <<- iteration + 1; 
       print(paste0('at iteration = ', iteration))
-      output[[2]][length(x_pref_theta)] = output[[2]][length(x_pref_theta)] * exp(x_pref_theta[length(x_pref_theta)])/(1 + exp(x_pref_theta[length(x_pref_theta)]))^2
 
       print(paste0('output from theta here =', output_theta[[1]]))
       output[[1]] = output[[1]] + output_theta[[1]] 
       output[[2]] = output[[2]] + output_theta[[2]][active_index] 
       return(output)
-    }, control=list(maxit=1e2), method='BFGS')
+    }, control=list(maxit=1e3), method='BFGS')
 
     param_trial_here[active_index] = optim_pref_theta$par
   }
@@ -510,7 +510,7 @@ transform_param_final = transform_param(param_final$other)
 
 if (Sys.info()[['sysname']] == 'Windows') {
   clusterExport(cl, c('transform_param_final', 'param','counterfactual_household_draw_theta_kappa_Rdraw'))
-  fit_values = parLapply(cl, c(Vol_HH_list_index, Com_HH_list_index), function(id) {
+  fit_values = parLapply(cl, c(sample_identify_theta), function(id) {
   output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
   output = as.data.frame(output)
   output$Y = data_hh_list[[id]]$Income; 
@@ -518,7 +518,7 @@ if (Sys.info()[['sysname']] == 'Windows') {
   return(output)
   })
 } else {
-  fit_values = mclapply(c(Vol_HH_list_index, Com_HH_list_index), function(id) {
+  fit_values = mclapply(c(sample_identify_theta), function(id) {
   output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
   output = as.data.frame(output)
   output$Y = data_hh_list[[id]]$Income; 
@@ -528,7 +528,7 @@ if (Sys.info()[['sysname']] == 'Windows') {
 
 fit_values = do.call('rbind', fit_values)
 
-observed_data_voluntary = do.call('rbind', data_hh_list[c(Vol_HH_list_index, Com_HH_list_index)])
+observed_data_voluntary = do.call('rbind', data_hh_list[c(sample_identify_theta)])
 
 fit_values = as.data.frame(fit_values)
 fit_values$Y2 <- as.numeric(Hmisc::cut2(fit_values$Y, g=5))

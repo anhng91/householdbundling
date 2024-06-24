@@ -128,7 +128,7 @@ observed_data = rbind(observed_vol_data, observed_com_data, observed_out_sample_
 observed_data = as.data.frame(observed_data)
 observed_data$Y2 <- as.numeric(Hmisc::cut2(observed_data$Income, g=5))
 
-fit_values = fit_values %>% mutate_at(c('m_observed', 'average_theta', 'wtp', 'cost_to_insurance', 'Y', 'm'), function(x) x * unit_inc)
+fit_values = fit_values %>% mutate_at(c('m_observed', 'average_theta', 'wtp', 'cost_to_insurance', 'Y', 'm', 'optional_care'), function(x) x * unit_inc)
 observed_data = observed_data %>% mutate_at(c('M_expense', 'Income'), function(x) x * unit_inc)
 
 saveRDS(fit_values, file='../../Obj_for_manuscript/fit_values.rds')

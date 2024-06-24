@@ -40,5 +40,4 @@ Compute the draws (preference parameters independent).
 }
 \examples{
 household_draw_theta_kappa_Rdraw(1, sample_data_and_parameter$param, 1000, 10, sick_parameters_sample, xi_parameters_sample)
-
 }

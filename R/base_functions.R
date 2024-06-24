@@ -921,6 +921,8 @@ identify_theta = function(data_set, param, n_draw_halton = 1000) {
 			theta_bar[, i] = halton_mat_list$individual_factor[,i] * exp(input_vec_transformed$sigma_thetabar) + input_vec_transformed$mean_beta_theta_ind[i] * halton_mat_list$household_random_factor + input_vec_transformed$mean_beta_theta[i]; 
 		}
 		likelihood = -log(apply(theta_bar, 1, function(x) prod(dnorm(theta[theta_pos_index], mean = x[theta_pos_index], sd = exp(input_vec_transformed$sigma_theta))/(1 - pnorm(0, mean=x[theta_pos_index], sd=exp(input_vec_transformed$sigma_theta))))) %>% mean + 1e-10)
+		likelihood = ifelse(is.nan(likelihood), -log(1e-10), likelihood)
+		likelihood = ifelse(is.na(likelihood), -log(1e-10), likelihood)
 		likelihood = ifelse(is.infinite(likelihood), -log(1e-10), likelihood) 
 		return(likelihood)
 		
@@ -986,7 +988,7 @@ transform_param = function(param_trial, return_index=FALSE, init=FALSE) {
 	start = end + 1; end = start + ncol(var_ind(data_hh_list[[1]])) -1; param$beta_gamma = param_trial[start:end]; index$beta_gamma = c(start:end)
 	start = end + 1; end = start + ncol(var_ind(data_hh_list[[1]])) -1; param$beta_delta = param_trial[start:end]; index$beta_delta = c(start:end)
 	# print(paste0('start index for theta = ', start, 'end index for theta = ', end))
-	start = end + 1; end = start + ncol(var_ind(data_hh_list[[1]])) -1; param$beta_theta_ind = param_trial[start:end]; index$beta_theta_ind = c(start:end)
+	start = end + 1; end = start + ncol(var_ind(data_hh_list[[1]])) -1; param$beta_theta_ind = param_trial[start:end];index$beta_theta_ind = c(start:end) 
 	start = end + 1; end = start; param$sigma_delta = param_trial[start] ; index$sigma_delta = c(start)
 	start = end + 1; end = start; param$sigma_omega = param_trial[start] ;  index$sigma_omega = c(start)
 	start = end + 1; end = start; param$sigma_theta = param_trial[start] ;  index$sigma_theta = c(start)
@@ -1057,7 +1059,7 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 	}
 	halton_mat_list$gamma = (halton_mat[,(3 * HHsize + 1):(4 * HHsize)]) %>% matrix(ncol = HHsize);
 	halton_mat_list$delta = (halton_mat[,(4 * HHsize + 1):(5 * HHsize)]) %>% matrix(ncol = HHsize);
-	halton_mat_list$theta = qnorm(halton_mat[,(5 * HHsize + 1):(6 * HHsize)] %>% matrix(ncol=HHsize));
+	halton_mat_list$theta = halton_mat[,(5 * HHsize + 1):(6 * HHsize)] %>% matrix(ncol=HHsize);
 	beta_gamma = X_ind %*% param$beta_gamma; 
 	s_gamma = exp(param$sigma_gamma); 
 	gamma = NULL
@@ -1174,6 +1176,7 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 	if (data_hh_i$HHsize_s[1] == 0) {
 		R_draw[[1]] =  lapply(income_vec[1] - rowSums(theta_draw * kappa_draw[[1]]), function(x) max(x,0)) %>% unlist()		
 		m = colMeans(theta_draw * kappa_draw[[1]] * (1 + matrix(apply(theta_draw * kappa_draw[[1]], 2, function(x) R_draw[[1]]^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[1]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize)), na.rm=TRUE)
+		optional_care = colMeans(theta_draw  * (0 + matrix(apply(theta_draw * kappa_draw[[1]], 2, function(x) R_draw[[1]]^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[1]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize)), na.rm=TRUE)
 		cost_to_insurance = colMeans(theta_draw * (1 - kappa_draw[[1]]) * (1 + matrix(apply(theta_draw * kappa_draw[[1]], 2, function(x) R_draw[[1]]^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[1]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize)), na.rm=TRUE)
 		vol_sts_counterfactual = rep(0, HHsize);
 	}
@@ -1291,6 +1294,7 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 		}
 
 		m = colMeans(theta_draw * kappa_draw_ordered[[optimal_U_index]] * (1 + matrix(apply(theta_draw * kappa_draw_ordered[[optimal_U_index]], 2, function(x) R_draw_ordered[[optimal_U_index]]^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw_ordered[[optimal_U_index]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize)), na.rm=TRUE)
+		optional_care = colMeans(theta_draw * (0 + matrix(apply(theta_draw * kappa_draw_ordered[[optimal_U_index]], 2, function(x) R_draw_ordered[[optimal_U_index]]^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw_ordered[[optimal_U_index]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize)), na.rm=TRUE)
 		cost_to_insurance = colMeans(theta_draw * (1 - kappa_draw_ordered[[optimal_U_index]]) * (1 + matrix(apply(theta_draw * kappa_draw_ordered[[optimal_U_index]], 2, function(x) R_draw_ordered[[optimal_U_index]]^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw_ordered[[optimal_U_index]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize)), na.rm=TRUE)
 	}
 
@@ -1308,6 +1312,7 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 	output$beta_delta = beta_delta
 	output$vol_sts = data_hh_i$Vol_sts
 	output$Bef_sts = data_hh_i$Bef_sts; output$Com_sts = data_hh_i$Com_sts;  output$Std_w_ins = data_hh_i$Std_w_ins
+	output$optional_care = optional_care
 	
 	if (data_hh_i$HHsize_s[1] > 0) {
 		output$vol_sts_counterfactual = vol_sts_counterfactual
