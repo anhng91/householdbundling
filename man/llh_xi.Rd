@@ -18,6 +18,7 @@ a numerical value for LLH.
 Compute the LLH of a household member getting coverage
 }
 \examples{
-llh_xi(runif(2 * ncol(var_ind(data_hh_list[[34592]]))),data_hh_list[[34592]])
+temp_data = data_hh_list[[34592]]; temp_data$Year = 2008
+llh_xi(runif(2 * ncol(var_ind(temp_data))),temp_data)
 
 }

@@ -94,9 +94,9 @@ if (remote) {
   sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
   sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 } else {
-  sample_r_theta = sample(sample_r_theta, 1000, replace=TRUE)
-  sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
-  sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
+  sample_r_theta = sample(sample_r_theta, 200, replace=TRUE)
+  sample_identify_pref = sample(sample_identify_pref, 200, replace=TRUE)
+  sample_identify_theta = sample(sample_identify_theta, 200, replace=TRUE)
 }
 
 
@@ -187,7 +187,7 @@ n_involuntary = do.call('c', lapply(sample_r_theta, function(output_hh_index) da
 n_halton_at_r = 100; 
 
 param_trial[x_transform[[2]]$beta_theta[1]] = 0
-# param_trial[x_transform[[2]]$beta_omega[1]] = 0.2
+# param_trial[x_transform[[2]]$beta_omega[1]] = 1
 
 initial_param_trial = param_trial
 
@@ -197,7 +197,6 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
   transform_param_trial = transform_param(param_trial_here, return_index=TRUE);
   var_list = c('beta_delta', 'beta_omega', 'beta_gamma', 'sigma_delta', 'sigma_gamma', 'sigma_omega')
   x_transform = transform_param(param_trial_here, return_index=TRUE)
-  print(x_transform[[1]])
 
   aggregate_moment_pref = function(x_transform) {
     if (Sys.info()[['sysname']] == 'Windows') {
@@ -317,6 +316,7 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
   init_theta = aggregate_moment_theta(transform_param(param_trial_here, return_index=TRUE))
 
   if (is.na(init_pref[[1]]) | is.nan(init_pref[[1]]) | is.na(init_theta[[1]]) | is.nan(init_theta[[1]])) {
+    print('stop here')
     return(NA)
   }
 
@@ -371,6 +371,8 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
 
   x_transform = transform_param(param_trial_here, return_index=TRUE)
   
+  print(x_transform[[1]])
+
   min_theta_R = do.call('c', lapply(sample_r_theta, function(output_hh_index) min(cbind(var_ind(data_hh_list[[output_hh_index]]), data_hh_list[[output_hh_index]]$Year == 2004, data_hh_list[[output_hh_index]]$Year == 2006, data_hh_list[[output_hh_index]]$Year == 2010, data_hh_list[[output_hh_index]]$Year == 2012) %*% x_transform[[1]]$beta_theta)))
 
   max_theta_R = do.call('c', lapply(sample_r_theta, function(output_hh_index) max(cbind(var_ind(data_hh_list[[output_hh_index]]), data_hh_list[[output_hh_index]]$Year == 2004, data_hh_list[[output_hh_index]]$Year == 2006, data_hh_list[[output_hh_index]]$Year == 2010, data_hh_list[[output_hh_index]]$Year == 2012) %*% x_transform[[1]]$beta_theta)))
@@ -439,7 +441,7 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
   if (is.nan(init_val) | is.na(init_val)) {
     return(NA)
   }
-  optim_r = optim(rep(0,length(x_transform[[2]]$beta_r) + 2), function(x) fx_r(x, silent=TRUE), control=list(maxit=1000), method='BFGS') 
+  optim_r = optim(rep(0,length(x_transform[[2]]$beta_r) + 2), function(x) fx_r(x, silent=FALSE), control=list(maxit=1000), method='BFGS') 
 
   fx_r(optim_r$par, silent=FALSE)
 
@@ -457,13 +459,15 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
       if (sum(prob) == 0) {
         Em = NA
       } else {
+        # Em = colSums(apply(output_hh$m, 2, function(x) x * (1 - prob)))
         Em = colSums(apply(output_hh$m, 2, function(x) x * (1 - prob)/(sum(1 - prob) + 1e-20)))
       }
       return(Em)
     }))
 
   print(output_2 %>% summary)
-  output_2 =  mean(((output_2 - mat_M_rtheta[,1]) * full_insurance_indicator_ind_level)^2, na.rm=TRUE) * 1e9
+  # output_2 =  mean((output_2 - mat_M_rtheta[,1] * full_insurance_indicator_ind_level)^2, na.rm=TRUE)
+  output_2 =  mean(((output_2 - mat_M_rtheta[,1]) * full_insurance_indicator_ind_level)^2, na.rm=TRUE)
   print(paste0('output_2 = ',output_2))
   
   print(mat_M_rtheta[which(full_insurance_indicator_ind_level == 1),1] %>% summary)
@@ -481,18 +485,21 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
   
 }
 
-param_trial = compute_inner_loop(-3, return_result=TRUE)
+# param_trial = compute_inner_loop(1, return_result=TRUE)
 
-initial_param_trial = param_trial; 
+# initial_param_trial = param_trial; 
 
 estimate_r_thetabar = optimize(function(xs) {
   output = try(compute_inner_loop(xs))
   if ('try-error' %in% class(output)) {
-    return(NA)
+    return(Inf)
   } else {
+    if (is.na(output)) {
+      return(Inf)
+    }
     return(output)
   }
-}, c(-6,1)) 
+}, c(-3,0)) 
 
 
 param_trial = compute_inner_loop(estimate_r_thetabar$minimum, return_result=TRUE, estimate_theta=TRUE, estimate_pref = TRUE)
@@ -508,9 +515,11 @@ param_final$sick = sick_parameters
 param = param_final 
 transform_param_final = transform_param(param_final$other)
 
+fit_sample = c(Vol_HH_list_index)
+
 if (Sys.info()[['sysname']] == 'Windows') {
   clusterExport(cl, c('transform_param_final', 'param','counterfactual_household_draw_theta_kappa_Rdraw'))
-  fit_values = parLapply(cl, c(sample_identify_theta), function(id) {
+  fit_values = parLapply(cl, c(fit_sample), function(id) {
   output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
   output = as.data.frame(output)
   output$Y = data_hh_list[[id]]$Income; 
@@ -518,7 +527,7 @@ if (Sys.info()[['sysname']] == 'Windows') {
   return(output)
   })
 } else {
-  fit_values = mclapply(c(sample_identify_theta), function(id) {
+  fit_values = mclapply(c(fit_sample), function(id) {
   output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
   output = as.data.frame(output)
   output$Y = data_hh_list[[id]]$Income; 
@@ -528,7 +537,7 @@ if (Sys.info()[['sysname']] == 'Windows') {
 
 fit_values = do.call('rbind', fit_values)
 
-observed_data_voluntary = do.call('rbind', data_hh_list[c(sample_identify_theta)])
+observed_data_voluntary = do.call('rbind', data_hh_list[c(fit_sample)])
 
 fit_values = as.data.frame(fit_values)
 fit_values$Y2 <- as.numeric(Hmisc::cut2(fit_values$Y, g=5))

@@ -159,3 +159,22 @@ all_param_final_2$beta_omega = as.data.frame(all_param_final_2$beta_omega); name
 
 saveRDS(all_param_final_2, file='../../Obj_for_manuscript/all_param_final_2.rds')
 
+# Compute covariance matrices 
+correlation_values = lapply(all_param_final, function(x) do.call('c',lapply(data_hh_list, function(data_id) {
+	x_W = var_ind(data_id) %*% x$beta_theta_ind; 
+	if (nrow(data_id) > 1) {
+		cov_matrix = x_W %*% t(x_W) + diag(rep(exp(x$sigma_thetabar)^2, nrow(data_id)))
+		cor_matrix = cov2cor(cov_matrix)
+	} else {
+		return(NA)
+	}
+	diag(cor_matrix) = NA; 
+	cor_matrix_vec = c(cor_matrix)
+	return(cor_matrix_vec); 
+})))
+
+
+
+saveRDS(correlation_values, file='../../Obj_for_manuscript/correlation_values.rds')
+
+

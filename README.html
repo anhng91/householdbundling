@@ -346,6 +346,12 @@ pre code {
 
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
+<div id="note-to-author-delete-before-distribution" class="section level1">
+<h1>Note to author (delete before distribution)</h1>
+<pre><code>git add --all 
+git commit -m &quot;name commit&quot;
+git push origin main</code></pre>
+</div>
 <div id="familyenrollment" class="section level1">
 <h1>familyenrollment</h1>
 <!-- badges: start -->
@@ -374,25 +380,33 @@ pre code {
     &amp; = -\exp \left(\frac{\sigma^2 (\mathbb{E} U)^2}{2} - \mu \mathbb{E} U  \right) \frac{1 - \Phi\left( -(\mu - a \sigma^2)/\sigma \right)}{1 - \Phi(-\mu/\sigma)} \\ 
     &amp; \left[ 1 + \frac{Var(U)}{2} \left( \sigma^2  \left[1 - \frac{-\mu/\sigma \phi(-\mu/\sigma)}{1 - \Phi(-\mu/\sigma)} - \left(\phi(-\mu/\sigma)/(1 - \Phi(-\mu/\sigma))\right)^2 \right] + \left(\mu + \phi(-\mu/\sigma)/(1 - \Phi(-\mu/\sigma))\sigma \right)^2 \right) \right]
   \end{align*} 
-\]</span> The arguments of <code>second_taylor_CARA</code> is <code>a</code>, which is <span class="math inline">\(\mathbb{E}(U)\)</span>, <code>b</code>, which is <span class="math inline">\(Var(U)\)</span>, and <code>mu</code> and <code>sigma</code>.</p>
+\]</span></p>
+<p>The arguments of <code>second_taylor_CARA</code> is <code>a</code>, which is <span class="math inline">\(\mathbb{E}(U)\)</span>, <code>b</code>, which is <span class="math inline">\(Var(U)\)</span>, and <code>mu</code> and <code>sigma</code>.</p>
 </div>
 <div id="second_taylor_cara_test" class="section level3">
 <h3>second_taylor_CARA_test</h3>
 <p>This function computes the numerical expectation of the function in <code>second_taylor_CARA</code>.</p>
 </div>
-<div id="household_draw_theta_kappa_rdraw" class="section level3">
-<h3>household_draw_theta_kappa_Rdraw</h3>
+<div id="household_draw_theta_kappa_rdraw_obsolete" class="section level3">
+<h3>household_draw_theta_kappa_Rdraw_obsolete</h3>
 <p>Note: in this function, I use Gauss Hermite to approximate the expectation w.r.t <span class="math inline">\(\bar{\theta}\)</span>. Note that Gauss Hermite is very accurate when the integral is over <span class="math inline">\(X\)</span>, which is normally distributed with an unknown <span class="math inline">\(\sigma\)</span>. However, the Hermite draws need to be normalized to center around the mean of the distribution of <span class="math inline">\(X\)</span>. In addition, the Hermite draws are also scaled to have variance equal to the unconditional variance of each member’s health shocks.</p>
-<p>First, draw (conditional) <span class="math inline">\(\theta\)</span> based on the unconditional distribution of <span class="math inline">\(\theta\)</span>. Then, approximate the following integral, which is the expected utility conditional on health status <span class="math inline">\(\bar{\theta}\)</span>, as <span class="math display">\[
+<p>First, draw (conditional) <span class="math inline">\(\theta\)</span> based on the unconditional distribution of <span class="math inline">\(\theta\)</span>. Then, approximate the following integral, which is the expected utility conditional on health status <span class="math inline">\(\bar{\theta}\)</span>, as</p>
+<p><span class="math display">\[
   \begin{align*}
     \int U(\pmb{\theta}, Y, \pmb{\kappa}) \exp(-1/2 (\log (\pmb{\theta} - \pmb{\bar{\theta}}) \sigma_{\pmb{\theta}}^{-2} \log (\pmb{\theta} - \pmb{\bar{\theta}})&#39;)) d\pmb{\theta}  \\
     \approx \mathbb{E}\left[ U(\pmb{\theta}, Y, \pmb{\kappa}) \exp(-1/2 (\log (\pmb{\theta} - \pmb{\bar{\theta}}) \sigma_{\theta|\pmb{\theta}}^{-2} \log (\pmb{\theta} - \pmb{\bar{\theta}})&#39;) + 1/2 \log(\pmb{\theta}) \sigma_{\theta}^{-2} \log(\pmb{\theta})&#39;)\right]
   \end{align*}
-\]</span> where the expectation is taken over draws of <span class="math inline">\(\theta\)</span>, drawn from the unconditional distribution. Note that this approximation works well when <span class="math inline">\(\bar{\theta}\)</span> is not too far from the unconditional mean because the variance of the <i>conditional</i> distribution is smaller than that of the unconditional distribution.</p>
+\]</span></p>
+<p>where the expectation is taken over draws of <span class="math inline">\(\theta\)</span>, drawn from the unconditional distribution. Note that this approximation works well when <span class="math inline">\(\bar{\theta}\)</span> is not too far from the unconditional mean because the variance of the <i>conditional</i> distribution is smaller than that of the unconditional distribution.</p>
 <p>The draws of <span class="math inline">\(\bar{\theta}\)</span> and their weights are stored in <code>Hermite_draw_mat</code> of the evaluated output. The draws of <span class="math inline">\(\theta\)</span> and coinsurance rates are stored in <code>theta_draw</code> and <code>kappa_draw</code>.</p>
 <p>The computation of <span class="math inline">\(\exp(-1/2 (\log (\pmb{\theta} - \pmb{\bar{\theta}}) \sigma_{\theta|\pmb{\bar{\theta}}}^{-2} \log (\pmb{\theta} - \pmb{\bar{\theta}})&#39;)\)</span> requires knowing <span class="math inline">\(\sigma_{\theta}\)</span>. So instead of computing this function directly, I use Taylor approximation around some <span class="math inline">\(\sigma_0^2\)</span> <span class="math display">\[
     \exp(-1/2(x-\mu)^2/\sigma^2) =  \sum_{j = 0} \exp(-1/2(x-\mu)^2/\sigma_0^2) \frac{(-1/2(x-\mu)^2)^j}{j!}(\sigma^{-2} - \sigma_0^{-2})^j 
-\]</span></p>
+\]</span> The issue with this function was that currently, the expected utility is taken also over <span class="math inline">\((\omega, \gamma, \delta)\)</span>, which is not correct. therefore, this function has been deemed obsolete.</p>
+</div>
+<div id="household_draw_theta_kappa_rdraw" class="section level3">
+<h3>household_draw_theta_kappa_Rdraw</h3>
+<p>This function takes on data specific from each household, combines with <code>param</code>. This function draws <span class="math inline">\(\theta\)</span> based on Hermite draws. However, we use a transformed Hermite draws, <span class="math inline">\(\theta = \verb|Hermite_draw| \times \sqrt{2} \times \sigma_{\bar{\theta}}\)</span>. This is because the true <span class="math inline">\(\sigma_{\theta}\)</span> is strictly less than <span class="math inline">\(\sigma_{\bar{\theta}}\)</span>, and the Hermite quadrature works better with this transformation.</p>
+<p>For each member’s draws of <span class="math inline">\(\theta\)</span>, also draw <span class="math inline">\(\kappa\)</span> if the person is insured. This function should produce a list, the first list is the draws of <span class="math inline">\(\theta\)</span>, and the second list is the corresponding draws of <span class="math inline">\(\kappa\)</span>.</p>
 </div>
 <div id="compute_expected_u_m" class="section level3">
 <h3>compute_expected_U_m</h3>
@@ -401,6 +415,16 @@ pre code {
 \]</span> and <span class="math display">\[
     OOP = \theta\kappa + \theta \kappa \delta R^{\omega} (1 + \kappa)^{-\gamma}
 \]</span> where <span class="math inline">\(\delta\)</span> is truncated normal, <span class="math inline">\(\gamma\)</span> is also truncated normal, <span class="math inline">\(\omega\)</span> is truncated normal, and <span class="math inline">\(\theta\)</span> is log-normally distributed. The expectation of <span class="math inline">\(m\)</span> is over <span class="math inline">\(\kappa, \delta, \omega, \theta\)</span>. The expectation w.r.t <span class="math inline">\(\kappa, \delta, \omega\)</span> have an analytical form (because of the truncated normal assumption). The expectation w.r.t <span class="math inline">\(\theta\)</span> cannot be done analytically because an insured individual has nonlinear <span class="math inline">\(\kappa\)</span>. Therefore, for integration over <span class="math inline">\(\theta\)</span>, we use numerical simulation with Halton draws.</p>
+</div>
+<div id="identify_theta" class="section level3">
+<h3>identify_theta</h3>
+<p>This function uses the sample of households whose normalized income is negative; therefore, the observed medical expenses are the same as the health shocks. In this function, the health type draws <span class="math inline">\(\bar{\theta}\)</span> are Halton draws. I then compute <span class="math inline">\(\mathbb{E}(\theta|\theta &gt; 0)\)</span>, which has a closed form because it is the mean of a truncated normal distribution. Similarly, <span class="math inline">\(\mathbb{E}(\theta^2|\theta &gt; 0)\)</span> is also computed.</p>
+<p><span class="math display">\[
+    \mathbb{E}(\theta|\theta &gt; 0) = \bar{\theta} + \frac{\phi(-\bar{\theta}/\sigma_{\theta})}{1 - \Phi(-\bar{\theta}/\sigma_{\theta})} \sigma_{\theta}
+\]</span></p>
+<p><span class="math display">\[
+    \mathbb{E}(\theta^2|\theta &gt; 0) = \left(\bar{\theta} + \frac{\phi(-\bar{\theta}/\sigma_{\theta})}{1 - \Phi(-\bar{\theta}/\sigma_{\theta})} \sigma_{\theta}\right)^2 + \sigma_{\theta}^2\left[1 + \frac{-\bar{\theta}/\sigma_{\theta} \phi(-\bar{\theta}/\sigma_{\theta}) }{1 - \Phi(-\bar{\theta}/\sigma_{\theta})} - \left(\frac{\phi(-\bar{\theta}/\sigma_{\theta})}{1 - \Phi(-\bar{\theta}/\sigma_{\theta})} \right)^2 \right]
+\]</span></p>
 </div>
 </div>
 <div id="data-objects" class="section level2">

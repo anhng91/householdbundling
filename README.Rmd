@@ -100,8 +100,19 @@ and
 where $\delta$ is truncated normal, $\gamma$ is also truncated normal, $\omega$ is truncated normal, and $\theta$ is log-normally distributed. The expectation of $m$ is over $\kappa, \delta, \omega, \theta$. The expectation w.r.t $\kappa, \delta, \omega$ have an analytical form (because of the truncated normal assumption). The expectation w.r.t $\theta$ cannot be done analytically because an insured individual has nonlinear $\kappa$. Therefore, for integration over $\theta$, we use numerical simulation with Halton draws.  
 
 
-## Data objects 
+### identify_theta
+This function uses the sample of households whose normalized income is negative; therefore, the observed medical expenses are the same as the health shocks. In this function, the health type draws $\bar{\theta}$ are Halton draws. I then compute $\mathbb{E}(\theta|\theta > 0)$, which has a closed form because it is the mean of a truncated normal distribution. Similarly, $\mathbb{E}(\theta^2|\theta > 0)$ is also computed. 
 
+\[
+    \mathbb{E}(\theta|\theta > 0) = \bar{\theta} + \frac{\phi(-\bar{\theta}/\sigma_{\theta})}{1 - \Phi(-\bar{\theta}/\sigma_{\theta})} \sigma_{\theta}
+\]
+
+\[
+    \mathbb{E}(\theta^2|\theta > 0) = \left(\bar{\theta} + \frac{\phi(-\bar{\theta}/\sigma_{\theta})}{1 - \Phi(-\bar{\theta}/\sigma_{\theta})} \sigma_{\theta}\right)^2 + \sigma_{\theta}^2\left[1 + \frac{-\bar{\theta}/\sigma_{\theta} \phi(-\bar{\theta}/\sigma_{\theta}) }{1 - \Phi(-\bar{\theta}/\sigma_{\theta})} - \left(\frac{\phi(-\bar{\theta}/\sigma_{\theta})}{1 - \Phi(-\bar{\theta}/\sigma_{\theta})} \right)^2 \right]
+\]
+
+## Data objects 
+ 
 
 
 
