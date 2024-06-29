@@ -94,9 +94,9 @@ if (remote) {
   sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
   sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 } else {
-  sample_r_theta = sample(sample_r_theta, 3000, replace=TRUE)
-  sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
-  sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
+  sample_r_theta = sample(sample_r_theta, 500, replace=TRUE)
+  sample_identify_pref = sample(sample_identify_pref, 500, replace=TRUE)
+  sample_identify_theta = sample(sample_identify_theta, 500, replace=TRUE)
 }
 
 
@@ -496,7 +496,7 @@ estimate_r_thetabar = optimize(function(xs) {
     }
     return(output)
   }
-}, c(-2,0)) 
+}, c(-2,-1)) 
 
 
 param_trial = compute_inner_loop(estimate_r_thetabar$minimum, return_result=TRUE, estimate_theta=TRUE, estimate_pref = TRUE)
