@@ -3,7 +3,7 @@ if (length(args)<2) {
   if (Sys.info()[['sysname']] == 'Windows') {
     numcores = 24;
   } else {
-    numcores = 4;
+    numcores = 8;
   }
   job_index = 1;  
 } else {
@@ -88,15 +88,15 @@ sample_identify_pref = sample_identify_pref[!(is.na(sample_identify_pref))]
 message('bootstrapping indices')
 set.seed(job_index);
 sample_index = sample(1:length(data_hh_list), length(data_hh_list), replace=TRUE)
-sample_r_theta = Vol_HH_list_index[which(!(is.na(lapply(Vol_HH_list_index, function(x) ifelse(nrow(data_hh_list[[x]]) <= 4, x, NA)))))]
+sample_r_theta = Vol_HH_list_index
 if (remote) {
   sample_r_theta = sample(sample_r_theta, length(sample_r_theta), replace=TRUE)
   sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
   sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 } else {
-  sample_r_theta = sample(sample_r_theta, 200, replace=TRUE)
-  sample_identify_pref = sample(sample_identify_pref, 200, replace=TRUE)
-  sample_identify_theta = sample(sample_identify_theta, 200, replace=TRUE)
+  sample_r_theta = sample(sample_r_theta, 3000, replace=TRUE)
+  sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
+  sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 }
 
 
@@ -185,9 +185,6 @@ X_hh_theta_r = do.call('rbind',lapply(sample_r_theta, function(output_hh_index) 
 n_involuntary = do.call('c', lapply(sample_r_theta, function(output_hh_index) data_hh_list[[output_hh_index]]$N_com[1] + data_hh_list[[output_hh_index]]$N_bef[1] + data_hh_list[[output_hh_index]]$N_std_w_ins[1]))
 
 n_halton_at_r = 100; 
-
-param_trial[x_transform[[2]]$beta_theta[1]] = 0
-# param_trial[x_transform[[2]]$beta_omega[1]] = 1
 
 initial_param_trial = param_trial
 
@@ -499,7 +496,7 @@ estimate_r_thetabar = optimize(function(xs) {
     }
     return(output)
   }
-}, c(-3,0)) 
+}, c(-2,0)) 
 
 
 param_trial = compute_inner_loop(estimate_r_thetabar$minimum, return_result=TRUE, estimate_theta=TRUE, estimate_pref = TRUE)
@@ -515,7 +512,7 @@ param_final$sick = sick_parameters
 param = param_final 
 transform_param_final = transform_param(param_final$other)
 
-fit_sample = c(Vol_HH_list_index)
+fit_sample = sample_r_theta
 
 if (Sys.info()[['sysname']] == 'Windows') {
   clusterExport(cl, c('transform_param_final', 'param','counterfactual_household_draw_theta_kappa_Rdraw'))
