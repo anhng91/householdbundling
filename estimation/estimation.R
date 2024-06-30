@@ -94,9 +94,9 @@ if (remote) {
   sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
   sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 } else {
-  sample_r_theta = sample(sample_r_theta, 500, replace=TRUE)
-  sample_identify_pref = sample(sample_identify_pref, 500, replace=TRUE)
-  sample_identify_theta = sample(sample_identify_theta, 500, replace=TRUE)
+  sample_r_theta = sample(sample_r_theta, 1000, replace=TRUE)
+  sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
+  sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 }
 
 
@@ -329,6 +329,9 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
       param_trial_inner_theta = param_trial_here
       param_trial_inner_theta[active_index] = x_pref_theta 
       x_transform = transform_param(param_trial_inner_theta, return_index = TRUE)
+      if (x_transform[[1]]$sigma_thetabar < -3 | x_transform[[1]]$sigma_delta > 2) {
+        return(list(NA, rep(NA, length(active_index))))
+      }
       message('computing preference moment')
       pref_moment = aggregate_moment_pref(transform_param(param_trial_inner_theta, return_index=TRUE))
       deriv_theta_index = c(x_transform[[2]]$beta_theta[1], x_transform[[2]]$beta_theta_ind[1], x_transform[[2]]$sigma_thetabar)
@@ -356,8 +359,8 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
       print(paste0('at iteration = ', iteration))
 
       print(paste0('output from theta here =', output_theta[[1]]))
-      output[[1]] = output[[1]] + output_theta[[1]] 
-      output[[2]] = output[[2]] + output_theta[[2]][active_index] 
+      output[[1]] = output[[1]] * length(sample_identify_pref) + output_theta[[1]] 
+      output[[2]] = output[[2]] * length(sample_identify_pref) + output_theta[[2]][active_index] 
       return(output)
     }, control=list(maxit=1e3), method='BFGS')
 
@@ -457,7 +460,7 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
         Em = NA
       } else {
         # Em = colSums(apply(output_hh$m, 2, function(x) x * (1 - prob)))
-        Em = colSums(apply(output_hh$m, 2, function(x) x * (1 - prob)/(sum(1 - prob) + 1e-20)))
+        Em = colSums(apply(matrix(output_hh$m, nrow = n_draw_halton), 2, function(x) x * (1 - prob)/(sum(1 - prob) + 1e-20)))
       }
       return(Em)
     }))
@@ -512,20 +515,22 @@ param_final$sick = sick_parameters
 param = param_final 
 transform_param_final = transform_param(param_final$other)
 
-fit_sample = sample_r_theta
+fit_sample = sample(Vol_HH_list_index, 1000)
 
 if (Sys.info()[['sysname']] == 'Windows') {
   clusterExport(cl, c('transform_param_final', 'param','counterfactual_household_draw_theta_kappa_Rdraw'))
   fit_values = parLapply(cl, c(fit_sample), function(id) {
-  output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
-  output = as.data.frame(output)
-  output$Y = data_hh_list[[id]]$Income; 
-  output$m_observed = data_hh_list[[id]]$M_expense; 
-  return(output)
+    constraint_function = function(y) unlist(lapply(1:length(Income_net_premium[[id]]), function(x_i) ifelse(Income_net_premium[[id]][x_i] < 0, -Inf, y[x_i])))
+    output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = constraint_function)
+    output = as.data.frame(output)
+    output$Y = data_hh_list[[id]]$Income; 
+    output$m_observed = data_hh_list[[id]]$M_expense; 
+    return(output)
   })
 } else {
   fit_values = mclapply(c(fit_sample), function(id) {
-  output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
+  constraint_function = function(y) unlist(lapply(1:length(Income_net_premium[[id]]), function(x_i) ifelse(Income_net_premium[[id]][x_i] < 0, -Inf, y[x_i])))
+  output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = constraint_function)
   output = as.data.frame(output)
   output$Y = data_hh_list[[id]]$Income; 
   output$m_observed = data_hh_list[[id]]$M_expense; 
