@@ -94,9 +94,9 @@ if (remote) {
   sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
   sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 } else {
-  sample_r_theta = sample(sample_r_theta, 4000, replace=TRUE)
-  sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
-  sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
+  sample_r_theta = sample(sample_r_theta, 200, replace=TRUE)
+  sample_identify_pref = sample(sample_identify_pref, 200, replace=TRUE)
+  sample_identify_theta = sample(sample_identify_theta, 200, replace=TRUE)
 }
 
 
@@ -428,7 +428,7 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
   optim_r = optim(rep(0,length(x_transform[[2]]$beta_r) + 2), function(x) fx_r(x, silent=TRUE), control=list(maxit=1e4), method='BFGS') 
 
   print('-------fit--------')
-  aggregate_moment_theta(transform_param(param_trial_here, return_index=TRUE),silent=FALSE)
+  aggregate_moment_pref(transform_param(param_trial_here, return_index=TRUE),silent=FALSE)
   fx_r(optim_r$par, silent=FALSE)
 
   param_trial_here[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r, x_transform[[2]]$correlation)] = optim_r$par
