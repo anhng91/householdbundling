@@ -3,7 +3,7 @@ if (length(args)<2) {
   if (Sys.info()[['sysname']] == 'Windows') {
     numcores = 24;
   } else {
-    numcores = 8;
+    numcores = 4;
   }
   job_index = 1;  
 } else {
@@ -438,7 +438,7 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
       sd = exp(optim_r$par[length(optim_r$par)-1])
       correlation = optim_r$par[length(optim_r$par)]
       mean_vec = rep(X_hh_theta_r %*% optim_r$par[1:(length(optim_r$par)-2)], each = n_halton_at_r) + correlation * hh_theta
-      full_insurance_prob = (pnorm((5 - mean_vec)/sd_r) - pnorm((output_hh$root_r - mean_vec)/sd_r))/(pnorm((5 - mean_vec)/sd_r) - pnorm((0 - mean_vec)/sd_r))
+      full_insurance_prob = (pnorm((5 - mean_vec)/sd) - pnorm((output_hh$root_r - mean_vec)/sd))/(pnorm((5 - mean_vec)/sd) - pnorm((0 - mean_vec)/sd))
       no_insurance_prob = 1 - full_insurance_prob 
       Em = list()
       Em$full_insurance = colSums(apply(matrix(output_hh$m, nrow = n_draw_halton), 2, function(x) x * full_insurance_prob/(sum(full_insurance_prob) + 1e-20)))
