@@ -61,6 +61,7 @@ if (Sys.info()[['sysname']] == 'Windows') {
   cl = makeCluster(numcores);
   clusterEvalQ(cl, library('tidyverse'))
   clusterEvalQ(cl, library('familyenrollment'))
+  clusterExport(cl,c('Vol_HH_list_index', 'Com_HH_list_index', 'out_sample_index'))
 }
 
 for (job_index in 0:1) {

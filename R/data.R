@@ -80,3 +80,11 @@
 "unit_inc"
 
 
+
+#' starting values (estimated values from a subsample)
+#' 
+#' @format ## `init_param`
+#' a vector 
+#' 
+#' @source estimation.R 
+

@@ -3,7 +3,7 @@ if (length(args)<2) {
   if (Sys.info()[['sysname']] == 'Windows') {
     numcores = 24;
   } else {
-    numcores = 8;
+    numcores = 4;
   }
   job_index = 1;  
 } else {
@@ -94,7 +94,7 @@ if (remote) {
   sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
   sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 } else {
-  sample_r_theta = sample(sample_r_theta, 1000, replace=TRUE)
+  sample_r_theta = sample(sample_r_theta, 4000, replace=TRUE)
   sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
   sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 }
@@ -233,8 +233,6 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
     if (!(is.na(sum(output_1)))) {
       print(summary(lm(mat_M[,1] ~ output_1)))
     }
-    print('predicted');print(summary(output_1))
-    print('actual'); print(summary(mat_M[,1]))
     output_2 = do.call('c', lapply(moment_ineligible_hh_output, function(x) x[[2]]))
     d_output_1 = list();
     d_output_2 = list();
@@ -441,8 +439,9 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
   if (is.nan(init_val) | is.na(init_val)) {
     return(NA)
   }
-  optim_r = optim(rep(0,length(x_transform[[2]]$beta_r) + 2), function(x) fx_r(x, silent=FALSE), control=list(maxit=1000), method='BFGS') 
+  optim_r = optim(rep(0,length(x_transform[[2]]$beta_r) + 2), function(x) fx_r(x, silent=TRUE), control=list(maxit=1000), method='BFGS') 
 
+  print('-------fit--------')
   fx_r(optim_r$par, silent=FALSE)
 
   param_trial_here[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r, x_transform[[2]]$correlation)] = optim_r$par
@@ -467,7 +466,7 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
 
   print(output_2 %>% summary)
   # output_2 =  mean((output_2 - mat_M_rtheta[,1] * full_insurance_indicator_ind_level)^2, na.rm=TRUE)
-  output_2 =  mean(((output_2 - mat_M_rtheta[,1]) * full_insurance_indicator_ind_level)^2, na.rm=TRUE)
+  output_2 =  sum(((output_2 - mat_M_rtheta[,1]) * full_insurance_indicator_ind_level)^2, na.rm=TRUE)
   print(paste0('output_2 = ',output_2))
   
   print(mat_M_rtheta[which(full_insurance_indicator_ind_level == 1),1] %>% summary)
@@ -477,6 +476,9 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
     optim_pref_theta = list()
     optim_pref_theta$value = 0 
   }
+  print('output_2'); print(output_2)
+  print('optim_r'); print(optim_r$value)
+  print('optim_pref_theta'); print(optim_pref_theta)
   if (return_result) {
     return(param_trial_here)
   } else {
@@ -520,7 +522,7 @@ fit_sample = sample(Vol_HH_list_index, 1000)
 if (Sys.info()[['sysname']] == 'Windows') {
   clusterExport(cl, c('transform_param_final', 'param','counterfactual_household_draw_theta_kappa_Rdraw'))
   fit_values = parLapply(cl, c(fit_sample), function(id) {
-    constraint_function = function(y) unlist(lapply(1:length(Income_net_premium[[id]]), function(x_i) ifelse(Income_net_premium[[id]][x_i] < 0, -Inf, y[x_i])))
+    constraint_function = function(x) x
     output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = constraint_function)
     output = as.data.frame(output)
     output$Y = data_hh_list[[id]]$Income; 
@@ -529,7 +531,7 @@ if (Sys.info()[['sysname']] == 'Windows') {
   })
 } else {
   fit_values = mclapply(c(fit_sample), function(id) {
-  constraint_function = function(y) unlist(lapply(1:length(Income_net_premium[[id]]), function(x_i) ifelse(Income_net_premium[[id]][x_i] < 0, -Inf, y[x_i])))
+  constraint_function = function(x) x
   output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = constraint_function)
   output = as.data.frame(output)
   output$Y = data_hh_list[[id]]$Income; 
