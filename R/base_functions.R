@@ -607,14 +607,15 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 
 			R_draw[[1]] =  income_vec[1 + length(elig_member_index)] - rowSums(theta_draw * kappa_draw[[1]])
 
+			R_uninsured = income_vec[1] - rowSums(theta_draw)
+
 			income_effect = min(income_vec[1] - rowSums(theta_draw)) > 0
 
 			if (sum(data_hh_i$Vol_sts) == data_hh_i$HHsize_s[1]) {
-				m[j,] = colMeans(theta_draw * kappa_draw[[1]] + income_effect * matrix(apply(theta_draw * kappa_draw[[1]], 2, function(x) (R_draw[[1]] * (R_draw[[1]] > 0) )^omega[j]), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[1]], 1, function(x) x^(-gamma[j,]) * delta[j,])), ncol=HHsize), na.rm=TRUE)
+				m[j,] = colMeans(theta_draw * kappa_draw[[1]] + income_effect * matrix(apply(theta_draw * kappa_draw[[1]], 2, function(x) x * (R_draw[[1]] * income_effect)^omega[j]), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[1]], 1, function(x) x^(-gamma[j,]) * delta[j,])), ncol=HHsize), na.rm=TRUE)
 			} else {
-				m[j,] = colMeans(theta_draw + income_effect * matrix(apply(theta_draw, 2, function(x) (R_draw[[1]] * (R_draw[[1]] > 0) )^omega[j]), ncol=HHsize) * matrix(t(apply(2 + kappa_draw[[1]] * 0, 1, function(x) x^(-gamma[j,]) * delta[j,])), ncol=HHsize), na.rm=TRUE)
+				m[j,] = colMeans(theta_draw + income_effect * matrix(apply(matrix(apply(theta_draw, 2, function(x) x * (R_uninsured * income_effect)^omega[j]), ncol=HHsize), 1, function(x) x * 2^(-gamma[j,]) * delta[j,]), ncol=HHsize), na.rm=TRUE)
 			}
-			
 
 			U_full_insurance = U(list(R_draw = R_draw[[1]], omega = omega[j], theta_draw = theta_draw, kappa_draw = kappa_draw[[1]], gamma = gamma[j,], delta = delta[j,], HHsize = HHsize), income_effect)  
 
@@ -1246,13 +1247,13 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 
 	# Should within-household heterogeneity be allowed: 
 	if (data_hh_i$HHsize_s[1] > 0) {
-		if (within_hh_heterogeneity$gamma) {
+		if (!within_hh_heterogeneity$gamma) {
 			gamma[elig_member_index] = rep(mean(gamma[elig_member_index]), data_hh_i$HHsize_s[1])
 		} 
-		if (within_hh_heterogeneity$theta_bar) {
+		if (!within_hh_heterogeneity$theta_bar) {
 			theta_bar[elig_member_index] = rep(mean(theta_bar[elig_member_index]), data_hh_i$HHsize_s[1])
 		} 
-		if (within_hh_heterogeneity$delta) {
+		if (!within_hh_heterogeneity$delta) {
 			delta[elig_member_index] = rep(mean(delta[elig_member_index]), data_hh_i$HHsize_s[1])
 		}
 	}
@@ -1313,9 +1314,9 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 
 	if (data_hh_i$HHsize_s[1] == 0) {
 		R_draw[[data_hh_i$HHsize_s[1] + 1]] =  income_vec[data_hh_i$HHsize_s[1] + 1] - rowSums(theta_draw * kappa_draw[[data_hh_i$HHsize_s[1] + 1]])
-		m = colMeans(theta_draw * kappa_draw[[data_hh_i$HHsize_s[1] + 1]] + income_effect * matrix(apply(theta_draw * kappa_draw[[data_hh_i$HHsize_s[1] + 1]], 2, function(x) (R_draw[[data_hh_i$HHsize_s[1] + 1]] * (R_draw[[data_hh_i$HHsize_s[1] + 1]] > 0))^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[data_hh_i$HHsize_s[1] + 1]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize), na.rm=TRUE)
-		optional_care = colMeans(income_effect * matrix(apply(theta_draw * kappa_draw[[data_hh_i$HHsize_s[1] + 1]], 2, function(x) (R_draw[[data_hh_i$HHsize_s[1] + 1]] * (R_draw[[data_hh_i$HHsize_s[1] + 1]] > 0))^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[data_hh_i$HHsize_s[1] + 1]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize), na.rm=TRUE)
-		cost_to_insurance = colMeans(theta_draw * (1 - kappa_draw[[data_hh_i$HHsize_s[1] + 1]]) + income_effect * matrix(apply(theta_draw * (1 - kappa_draw[[data_hh_i$HHsize_s[1] + 1]]), 2, function(x) (R_draw[[data_hh_i$HHsize_s[1] + 1]] * (R_draw[[data_hh_i$HHsize_s[1] + 1]] > 0))^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[data_hh_i$HHsize_s[1] + 1]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize), na.rm=TRUE)
+		m = colMeans(theta_draw * kappa_draw[[data_hh_i$HHsize_s[1] + 1]] + income_effect * matrix(apply(theta_draw * kappa_draw[[data_hh_i$HHsize_s[1] + 1]], 2, function(x) x * (R_draw[[data_hh_i$HHsize_s[1] + 1]] * (R_draw[[data_hh_i$HHsize_s[1] + 1]] > 0))^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[data_hh_i$HHsize_s[1] + 1]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize), na.rm=TRUE)
+		optional_care = colMeans(income_effect * matrix(apply(theta_draw * kappa_draw[[data_hh_i$HHsize_s[1] + 1]], 2, function(x) x * (R_draw[[data_hh_i$HHsize_s[1] + 1]] * (R_draw[[data_hh_i$HHsize_s[1] + 1]] > 0))^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[data_hh_i$HHsize_s[1] + 1]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize), na.rm=TRUE)
+		cost_to_insurance = colMeans(theta_draw * (1 - kappa_draw[[data_hh_i$HHsize_s[1] + 1]]) + income_effect * matrix(apply(theta_draw * (1 - kappa_draw[[data_hh_i$HHsize_s[1] + 1]]), 2, function(x) x * (R_draw[[data_hh_i$HHsize_s[1] + 1]] * (R_draw[[data_hh_i$HHsize_s[1] + 1]] > 0))^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[data_hh_i$HHsize_s[1] + 1]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize), na.rm=TRUE)
 		vol_sts_counterfactual = rep(0, HHsize);
 	}
 
@@ -1323,7 +1324,7 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 
 	if (data_hh_i$HHsize_s[1] > 0) {
 		un_censored_R = list()
-		U = list()
+		U_list = list()
 
 		cara = function(x) {
 			if (r != 0) {
@@ -1337,7 +1338,7 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 
 		R_draw[[data_hh_i$HHsize_s[1] +1]] = un_censored_R[[data_hh_i$HHsize_s[1] + 1]]
 
-		U[[data_hh_i$HHsize_s[1] + 1]] = cara(U(list(theta_draw = theta_draw, R_draw = R_draw[[data_hh_i$HHsize_s[1] +1]], kappa_draw = kappa_draw[[data_hh_i$HHsize_s[1] +1]], gamma = gamma, delta = delta, omega = omega, HHsize = HHsize), min(R_draw[[data_hh_i$HHsize_s[1] +1]]) > 0))
+		U_list[[data_hh_i$HHsize_s[1] + 1]] = cara(U(list(theta_draw = theta_draw, R_draw = R_draw[[data_hh_i$HHsize_s[1] +1]], kappa_draw = kappa_draw[[data_hh_i$HHsize_s[1] +1]], gamma = gamma, delta = delta, omega = omega, HHsize = HHsize), income_effect))
 
 
 		# compute one-member insurance
@@ -1369,17 +1370,17 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 			R_draw[[1 + n_insured]] =  un_censored_R[[1 + n_insured]]
 
 			# U[[1 + n_insured]] = cara(U_without_ulowerbar * (R_draw[[1 + n_insured]] > 0) + (R_draw[[1 + n_insured]] == 0) * (income_vec[n_insured + 1] - rowSums(theta_draw * kappa_draw_ordered[[1 + n_insured]]) + u_lowerbar))
-			U[[1 + n_insured]] = cara(U(list(theta_draw = theta_draw, R_draw = R_draw[[1 + n_insured]], kappa_draw = kappa_draw[[1 + n_insured]], gamma = gamma, delta = delta, omega = omega, HHsize = HHsize), income_effect)) 
+			U_list[[1 + n_insured]] = cara(U(list(theta_draw = theta_draw, R_draw = R_draw[[1 + n_insured]], kappa_draw = kappa_draw[[1 + n_insured]], gamma = gamma, delta = delta, omega = omega, HHsize = HHsize), income_effect)) 
 		}
 
 		# impose affordability constraint
-		for (n_insured in 0:(data_hh_i$HHsize_s[1] - 1)) {
+		for (n_insured in 1:(data_hh_i$HHsize_s[1])) {
 			if (income_vec[[n_insured + 1]] < 0) {
-				U[[n_insured + 1]] = -Inf
+				U_list[[n_insured + 1]] = -Inf
 			}
 		}
 
-		optimal_U_index = sort(constraint_function(unlist(U)), index.return=TRUE, decreasing=TRUE)$ix[1]
+		optimal_U_index = sort(constraint_function(unlist(U_list)), index.return=TRUE, decreasing=TRUE)$ix[1]
 
 		vol_sts_counterfactual = rep(0, HHsize);
 
@@ -1423,11 +1424,9 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 			wtp_2 = 0; 
 		}
 
-
-
-		m = colMeans(theta_draw * kappa_draw[[optimal_U_index]] + income_effect * matrix(apply(theta_draw * kappa_draw[[optimal_U_index]], 2, function(x) (R_draw[[optimal_U_index]]*income_effect)^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[optimal_U_index]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize), na.rm=TRUE)
-		optional_care = colMeans(income_effect * matrix(apply(theta_draw * kappa_draw[[optimal_U_index]], 2, function(x) (R_draw[[optimal_U_index]]*income_effect)), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[optimal_U_index]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize), na.rm=TRUE)
-		cost_to_insurance = colMeans(theta_draw * (1 - kappa_draw[[optimal_U_index]]) + income_effect * matrix(apply(theta_draw * kappa_draw[[optimal_U_index]], 2, function(x) (R_draw[[optimal_U_index]]*income_effect)), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[optimal_U_index]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize), na.rm=TRUE)
+		m = colMeans(theta_draw * kappa_draw[[optimal_U_index]] + income_effect * matrix(apply(theta_draw * kappa_draw[[optimal_U_index]], 2, function(x) x * (R_draw[[optimal_U_index]]*income_effect)^omega), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[optimal_U_index]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize), na.rm=TRUE)
+		optional_care = colMeans(income_effect * matrix(apply(theta_draw * kappa_draw[[optimal_U_index]], 2, function(x) x * (R_draw[[optimal_U_index]]*income_effect)), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[optimal_U_index]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize), na.rm=TRUE)
+		cost_to_insurance = colMeans(theta_draw * (1 - kappa_draw[[optimal_U_index]]) + income_effect * matrix(apply(theta_draw * kappa_draw[[optimal_U_index]], 2, function(x) x * (R_draw[[optimal_U_index]]*income_effect)), ncol=HHsize) * matrix(t(apply(1 + kappa_draw[[optimal_U_index]], 1, function(x) x^(-gamma) * delta)), ncol=HHsize), na.rm=TRUE)
 	}
 
 	output = list()

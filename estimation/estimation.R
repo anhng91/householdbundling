@@ -3,7 +3,7 @@ if (length(args)<2) {
   if (Sys.info()[['sysname']] == 'Windows') {
     numcores = 24;
   } else {
-    numcores = 8;
+    numcores = 4;
   }
   job_index = 1;  
 } else {
@@ -94,9 +94,9 @@ if (remote) {
   sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
   sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 } else {
-  sample_r_theta = sample(sample_r_theta, 4000, replace=TRUE)
-  sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
-  sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
+  sample_r_theta = sample(sample_r_theta, 200, replace=TRUE)
+  sample_identify_pref = sample(sample_identify_pref, 500, replace=TRUE)
+  sample_identify_theta = sample(sample_identify_theta, 500, replace=TRUE)
 }
 
 
@@ -194,9 +194,10 @@ n_involuntary = do.call('c', lapply(sample_r_theta, function(output_hh_index) da
 
 n_halton_at_r = 100; 
 
-initial_param_trial = param_trial
+initial_param_trial = init_param
 
 compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE, estimate_pref=TRUE) {
+  print(paste0('sigma_theta value is', x_stheta))
   param_trial_here = initial_param_trial
   param_trial_here[transform_param_trial[[2]]$sigma_theta] = x_stheta; 
   transform_param_trial = transform_param(param_trial_here, return_index=TRUE);
@@ -238,11 +239,11 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
     }
 
     output_1 = do.call('c', lapply(moment_ineligible_hh_output, function(x) x[[1]]))
-    if (!(is.na(sum(output_1)))) {
-      if (max(output_1) == 0) {
-        return(list(NA, rep(NA, length(active_index_pref))))
-      }
-    }
+    # if (!(is.na(sum(output_1)))) {
+    #   if (max(output_1) == 0) {
+    #     return(list(NA, rep(NA, length(active_index_pref))))
+    #   }
+    # }
     output_2 = do.call('c', lapply(moment_ineligible_hh_output, function(x) x[[2]]))
     d_output_1 = list();
     d_output_2 = list();
@@ -293,6 +294,7 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
     output[[2]] = output[[2]][active_index_pref]
     output[[3]] = do.call('cbind', output[[3]])
 
+    print(output[[1]])
     return(output)
   }
 
@@ -343,9 +345,9 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
       param_trial_inner_theta = param_trial_here
       param_trial_inner_theta[active_index] = x_pref_theta 
       x_transform = transform_param(param_trial_inner_theta, return_index = TRUE)
-      if (x_transform[[1]]$sigma_thetabar < -3 | x_transform[[1]]$sigma_delta > 2) {
-        return(list(NA, rep(NA, length(active_index))))
-      }
+      # if (x_transform[[1]]$sigma_thetabar < -3 | x_transform[[1]]$sigma_delta > 2) {
+      #   return(list(NA, rep(NA, length(active_index))))
+      # }
       pref_moment = aggregate_moment_pref(transform_param(param_trial_inner_theta, return_index=TRUE))
       deriv_theta_index = c(x_transform[[2]]$beta_theta[1], x_transform[[2]]$beta_theta_ind[1], x_transform[[2]]$sigma_thetabar)
       if (is.na(pref_moment[[1]])) {
@@ -353,7 +355,7 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
       }
       for (i in deriv_theta_index) {
         param_trial_i = param_trial_inner_theta; param_trial_i[i] = param_trial_inner_theta[i] + tol
-        fi = aggregate_moment_pref(transform_param(param_trial_i, return_index=TRUE))
+        fi = aggregate_moment_pref(transform_param(param_trial_i, return_index=TRUE), silent=FALSE)
         if (i == deriv_theta_index[1]) {
           pref_moment[[2]] = c(pref_moment[[2]],(rowMeans((fi[[3]] - pref_moment[[3]])/tol) %*% X_ind_pref_with_year)/nrow(X_ind_pref))
         } else if (i == deriv_theta_index[2]) {
@@ -363,6 +365,8 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
         }
       }
       output = list()
+
+      print('moment from theta'); print(output_theta[[1]])
       output[[1]] = pref_moment[[1]] * length(sample_identify_pref) + output_theta[[1]] 
       output[[2]] = pref_moment[[2]] * length(sample_identify_pref) + output_theta[[2]][active_index] 
       return(output)
@@ -439,6 +443,7 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
       correlation = optim_r$par[length(optim_r$par)]
       mean_vec = rep(X_hh_theta_r %*% optim_r$par[1:(length(optim_r$par)-2)], each = n_halton_at_r) + correlation * hh_theta
       full_insurance_prob = (pnorm((5 - mean_vec)/sd) - pnorm((output_hh$root_r - mean_vec)/sd))/(pnorm((5 - mean_vec)/sd) - pnorm((0 - mean_vec)/sd))
+      full_insurance_prob[is.nan(full_insurance_prob)] = 1; 
       no_insurance_prob = 1 - full_insurance_prob 
       Em = list()
       Em$full_insurance = colSums(apply(matrix(output_hh$m, nrow = n_draw_halton), 2, function(x) x * full_insurance_prob/(sum(full_insurance_prob) + 1e-20)))
@@ -451,8 +456,8 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
 
   output_2 =  sum(((Em_full_insurance - mat_M_rtheta[,1]) * full_insurance_indicator_ind_level)^2 + ((Em_no_insurance - mat_M_rtheta[,1]) * no_insurance_indicator_ind_level)^2, na.rm=TRUE)
 
-  summary(Em_full_insurance * full_insurance_indicator_ind_level + Em_no_insurance * no_insurance_indicator_ind_level)
-  summary(mat_M_rtheta[,1])
+  summary(Em_full_insurance * full_insurance_indicator_ind_level + Em_no_insurance * no_insurance_indicator_ind_level) %>% print
+  summary(mat_M_rtheta[,1]) %>% print
 
   if (!(estimate_theta)) {
     optim_pref_theta = list()
@@ -522,9 +527,9 @@ fit_values$Y2 <- as.numeric(Hmisc::cut2(fit_values$Y, g=5))
 observed_data_voluntary = as.data.frame(observed_data_voluntary)
 observed_data_voluntary$Y2 <- as.numeric(Hmisc::cut2(observed_data_voluntary$Income, g=5))
 
-predicted_data_summary = fit_values %>% group_by(Y2) %>% summarise(mean_Vol_sts = mean(vol_sts_counterfactual), mean_m = quantile(m, 0.75))
+predicted_data_summary = fit_values %>% group_by(Y2) %>% summarise(mean_Vol_sts = mean(vol_sts_counterfactual), mean_m = mean(m, na.rm=TRUE))
 predicted_data_summary$type = 'predicted'
-actual_data_summary = observed_data_voluntary %>% group_by(Y2) %>% summarise(mean_Vol_sts = mean(Vol_sts), mean_m = quantile(M_expense, 0.75))
+actual_data_summary = observed_data_voluntary %>% group_by(Y2) %>% summarise(mean_Vol_sts = mean(Vol_sts), mean_m = mean(M_expense, na.rm=TRUE))
 actual_data_summary$type = 'actual'
 
 plot_1 = ggplot(data = rbind(predicted_data_summary, actual_data_summary), aes(x = Y2, y = mean_Vol_sts, color=type)) + geom_line() 
