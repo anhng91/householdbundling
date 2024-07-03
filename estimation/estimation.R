@@ -497,7 +497,7 @@ param_final$sick = sick_parameters
 param = param_final 
 transform_param_final = transform_param(param_final$other)
 
-fit_sample = Vol_HH_list_index
+fit_sample = c(Vol_HH_list_index, Com_HH_list_index)
 
 if (Sys.info()[['sysname']] == 'Windows') {
   clusterExport(cl, c('transform_param_final', 'param','counterfactual_household_draw_theta_kappa_Rdraw'))
@@ -506,6 +506,8 @@ if (Sys.info()[['sysname']] == 'Windows') {
     output = as.data.frame(output)
     output$Y = data_hh_list[[id]]$Income; 
     output$m_observed = data_hh_list[[id]]$M_expense; 
+    output$id = id;
+    output$HHsize_s = data_hh_list[[id]]$HHsize_s; 
     return(output)
   })
 } else {
@@ -514,6 +516,8 @@ if (Sys.info()[['sysname']] == 'Windows') {
   output = as.data.frame(output)
   output$Y = data_hh_list[[id]]$Income; 
   output$m_observed = data_hh_list[[id]]$M_expense; 
+  output$id = id; 
+  output$HHsize_s = data_hh_list[[id]]$HHsize_s; 
   return(output)}, mc.cores=numcores)
 }
 
@@ -522,14 +526,14 @@ fit_values = do.call('rbind', fit_values)
 observed_data_voluntary = do.call('rbind', data_hh_list[c(fit_sample)])
 
 fit_values = as.data.frame(fit_values)
-fit_values$Y2 <- as.numeric(Hmisc::cut2(fit_values$Y, g=5))
+
 
 observed_data_voluntary = as.data.frame(observed_data_voluntary)
-observed_data_voluntary$Y2 <- as.numeric(Hmisc::cut2(observed_data_voluntary$Income, g=5))
 
-predicted_data_summary = fit_values %>% group_by(Y2) %>% summarise(mean_Vol_sts = mean(vol_sts_counterfactual), mean_m = mean(m, na.rm=TRUE))
+
+predicted_data_summary = fit_values %>% mutate(Y2 = as.numeric(Hmisc::cut2(Y, g=5))) %>% group_by(Y2) %>% summarise(mean_Vol_sts = mean(vol_sts_counterfactual), mean_m = mean(m, na.rm=TRUE))
 predicted_data_summary$type = 'predicted'
-actual_data_summary = observed_data_voluntary %>% group_by(Y2) %>% summarise(mean_Vol_sts = mean(Vol_sts), mean_m = mean(M_expense, na.rm=TRUE))
+actual_data_summary = observed_data_voluntary  %>% mutate(Y2 = as.numeric(Hmisc::cut2(Income, g=5))) %>% group_by(Y2) %>% summarise(mean_Vol_sts = mean(Vol_sts), mean_m = mean(M_expense, na.rm=TRUE))
 actual_data_summary$type = 'actual'
 
 plot_1 = ggplot(data = rbind(predicted_data_summary, actual_data_summary), aes(x = Y2, y = mean_Vol_sts, color=type)) + geom_line() 

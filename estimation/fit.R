@@ -70,7 +70,7 @@ for (job_index in 0:1) {
 		transform_param_final = transform_param(param_final$other)
 		if (Sys.info()[['sysname']] == 'Windows') {
 		  clusterExport(cl, c('transform_param_final', 'param_final','counterfactual_household_draw_theta_kappa_Rdraw'))
-		  fit_values = parLapply(cl, c(Vol_HH_list_index, Com_HH_list_index, out_sample_index), function(id) {
+		  fit_values = parLapply(cl, c(Vol_HH_list_index, Com_HH_list_index), function(id) {
 			output = tryCatch(counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param_final$sick, param_final$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x), error=function(e) id)
 			output = as.data.frame(output)
 			output$Y = data_hh_list[[id]]$Income; 
@@ -80,7 +80,7 @@ for (job_index in 0:1) {
 			return(output)
 			})
 		} else {
-		  fit_values = mclapply(c(Vol_HH_list_index, Com_HH_list_index, out_sample_index), function(id) {
+		  fit_values = mclapply(c(Vol_HH_list_index, Com_HH_list_index), function(id) {
 			output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param_final$sick, param_final$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
 			output = as.data.frame(output)
 			output$Y = data_hh_list[[id]]$Income; 
@@ -96,7 +96,7 @@ for (job_index in 0:1) {
 		if (Sys.info()[['sysname']] == 'Windows') {
 		  clusterExport(cl, c('transform_param_final', 'param_final','counterfactual_household_draw_theta_kappa_Rdraw'))
 		  out_sample_values = parLapply(cl, out_sample_index, function(id) {
-			output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param_final$sick, param_final$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x[c(1,length(x))])
+			output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param_final$sick, param_final$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) {x_new = x; x_new[-c(1, length(x))] = -Inf; return(x_new) })
 			output = as.data.frame(output)
 			output$Y = data_hh_list[[id]]$Income; 
 			output$m_observed = data_hh_list[[id]]$M_expense; 
@@ -106,7 +106,7 @@ for (job_index in 0:1) {
 			})
 		} else {
 		  out_sample_values = mclapply(out_sample_index, function(id) {
-			output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param_final$sick, param_final$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x[c(1,length(x))])
+			output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param_final$sick, param_final$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) {x_new = x; x_new[-c(1, length(x))] = -Inf; return(x_new) })
 			output = as.data.frame(output)
 			output$Y = data_hh_list[[id]]$Income; 
 			output$m_observed = data_hh_list[[id]]$M_expense; 
@@ -130,7 +130,7 @@ observed_data = as.data.frame(observed_data)
 observed_data$Y2 <- as.numeric(Hmisc::cut2(observed_data$Income, g=5))
 
 fit_values = fit_values %>% mutate_at(c('m_observed', 'average_theta', 'wtp', 'cost_to_insurance', 'Y', 'm', 'optional_care', 'wtp_uni', 
-	'wtp_2'), function(x) x * unit_inc)
+	'wtp_2', 'subs_effect'), function(x) x * unit_inc)
 observed_data = observed_data %>% mutate_at(c('M_expense', 'Income'), function(x) x * unit_inc)
 
 saveRDS(fit_values, file='../../Obj_for_manuscript/fit_values.rds')

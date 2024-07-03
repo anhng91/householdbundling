@@ -679,7 +679,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 					prob_full_insured[j] = min(lapply(threshold_r_output, function(x) x$prob_full_insured) %>% unlist(), na.rm=TRUE)
 				} else {
 					root_r_vec[j] = min(lapply(threshold_r_output, function(x) x$root_r_vec) %>% unlist(), na.rm=TRUE)
-					prob_full_insured[j] = min(lapply(threshold_r_output, function(x) x$prob_full_insured) %>% unlist(), na.rm=TRUE)
+					prob_full_insured[j] = max(lapply(threshold_r_output, function(x) x$prob_full_insured) %>% unlist(), na.rm=TRUE)
 				}	
 			}
 
@@ -1118,7 +1118,9 @@ uniroot_usr = function(f, interval_init) {
 		return(output)
 	} else {
 		if (f(interval_init[1]) > 0) {
-			stop('sign at the initial value is incorrect. Should be negative')
+			output = list()
+			output$root = NA; 
+			return(output) 
 		} else {
 			if (f(interval_init[2]) > 0) {
 				return(uniroot(f, interval_init))
