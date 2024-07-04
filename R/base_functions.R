@@ -425,7 +425,7 @@ U = function(input, income_effect=TRUE) {
 	if (!income_effect) {
 		output = input$R_draw
 	} else {
-		output = lapply(((input$R_draw + 1)^(1 - input$omega)-1)/(1 - input$omega), function(x) ifelse(is.nan(x), 0, x)) %>% unlist() * (input$R_draw > 0) - rowSums(matrix(t(apply(input$theta_draw, 1, function(x) x * input$delta)), ncol=input$HHsize) * matrix(t(apply(input$kappa_draw, 1, function(x) unlist(lapply(((x + 1)^(1 - input$gamma) - 1)/(1 - input$gamma),  function(x) ifelse(is.nan(x), 0, x))))), ncol=input$HHsize)) 
+		output = lapply(((input$R_draw * (input$R_draw > 0) + 1)^(1 - input$omega)-1)/(1 - input$omega), function(x) ifelse(is.nan(x), 0, x)) %>% unlist() * (input$R_draw > 0) - rowSums(matrix(t(apply(input$theta_draw, 1, function(x) x * input$delta)), ncol=input$HHsize) * matrix(t(apply(input$kappa_draw, 1, function(x) unlist(lapply(((x + 1)^(1 - input$gamma) - 1)/(1 - input$gamma),  function(x) ifelse(is.nan(x), 0, x))))), ncol=input$HHsize)) 
 	}
 	return(output)
 }
@@ -453,8 +453,8 @@ m_fun = function(input, income_effect=TRUE) {
 		output$insurer_cost = input$theta_draw * (1 - input$kappa_draw)	
 	} else {
 		output = list() 
-		output$oop = input$theta_draw * input$kappa_draw + matrix(apply(input$theta_draw * input$kappa_draw, 2, function(x) x * (input$R_draw + 1)^input$omega), ncol=input$HHsize) * matrix(t(apply(1 + input$kappa_draw, 1, function(x) x^(-input$gamma) * input$delta)), ncol=input$HHsize)
-		output$m = input$theta_draw + matrix(apply(input$theta_draw, 2, function(x) x * (input$R_draw + 1)^input$omega * (input$R_draw > 0)), ncol=input$HHsize) * matrix(t(apply(1 + input$kappa_draw, 1, function(x) x^(-input$gamma) * input$delta)), ncol=input$HHsize)
+		output$oop = input$theta_draw * input$kappa_draw + matrix(apply(input$theta_draw * input$kappa_draw, 2, function(x) x * (input$R_draw * (input$R_draw > 0) + 1)^input$omega), ncol=input$HHsize) * matrix(t(apply(1 + input$kappa_draw, 1, function(x) x^(-input$gamma) * input$delta)), ncol=input$HHsize)
+		output$m = input$theta_draw + matrix(apply(input$theta_draw, 2, function(x) x * (input$R_draw * (input$R_draw > 0) + 1)^input$omega * (input$R_draw > 0)), ncol=input$HHsize) * matrix(t(apply(1 + input$kappa_draw, 1, function(x) x^(-input$gamma) * input$delta)), ncol=input$HHsize)
 		output$neccessary = input$theta_draw
 		output$optional = output$m - output$neccessary
 		output$insurer_cost = output$m - output$oop
