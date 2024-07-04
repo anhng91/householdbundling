@@ -497,7 +497,7 @@ param_final$sick = sick_parameters
 param = param_final 
 transform_param_final = transform_param(param_final$other)
 
-fit_sample = c(Vol_HH_list_index, Com_HH_list_index)
+fit_sample = sample(Vol_HH_list_index, 2000)
 
 if (Sys.info()[['sysname']] == 'Windows') {
   clusterExport(cl, c('transform_param_final', 'param','counterfactual_household_draw_theta_kappa_Rdraw'))

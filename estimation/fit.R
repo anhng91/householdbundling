@@ -67,6 +67,7 @@ if (Sys.info()[['sysname']] == 'Windows') {
 for (job_index in 0:1) {
 	if (file.exists(paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))) {
 		param_final <- readRDS(paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
+		param_final$other = init_param
 		transform_param_final = transform_param(param_final$other)
 		if (Sys.info()[['sysname']] == 'Windows') {
 		  clusterExport(cl, c('transform_param_final', 'param_final','counterfactual_household_draw_theta_kappa_Rdraw'))
