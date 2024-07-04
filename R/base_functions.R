@@ -1358,7 +1358,7 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 
 	if (data_hh_i$HHsize_s[1] == 0) {
 		R_draw[[data_hh_i$HHsize_s[1] + 1]] =  income_vec[data_hh_i$HHsize_s[1] + 1] - rowSums(theta_draw * kappa_draw[[data_hh_i$HHsize_s[1] + 1]])
-		m_all  = m_fun(list(theta_draw = theta_draw, kappa_draw = kappa_draw[[data_hh_i$HHsize_s[1] + 1]], R_draw = R_draw[[data_hh_i$HHsize_s[1] + 1]], omega = omega, gamma = gamma, delta = delta), income_effect = income_effect)
+		m_all  = m_fun(list(theta_draw = theta_draw, kappa_draw = kappa_draw[[data_hh_i$HHsize_s[1] + 1]], R_draw = R_draw[[data_hh_i$HHsize_s[1] + 1]], omega = omega, gamma = gamma, delta = delta, HHsize = HHsize), income_effect = income_effect)
 		m = colMeans(m_all$oop)
 		optional_care = colMeans(m_all$optional)
 		cost_to_insurance = colMeans(m_all$insurer_cost)
