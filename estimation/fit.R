@@ -80,6 +80,16 @@ for (job_index in 0:1) {
 			output$id = id; 
 			return(output)
 			})
+
+			no_heterogeneity_values = parLapply(cl, c(Vol_HH_list_index), function(id) {
+			output = tryCatch(counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param_final$sick, param_final$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x, within_hh_heterogeneity = list(omega=FALSE, gamma=FALSE, delta=FALSE, theta_bar=FALSE)), error=function(x) x)
+			output = as.data.frame(output)
+			output$Y = data_hh_list[[id]]$Income; 
+			output$m_observed = data_hh_list[[id]]$M_expense; 
+			output$fit_type = ifelse(id %in% Vol_HH_list_index, 2, ifelse(id %in% Com_HH_list_index, 1, 3))
+			output$id = id; 
+			return(output)
+			})
 		} else {
 		  fit_values = mclapply(c(Vol_HH_list_index, Com_HH_list_index), function(id) {
 			output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param_final$sick, param_final$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
@@ -89,10 +99,25 @@ for (job_index in 0:1) {
 			output$fit_type = ifelse(id %in% Vol_HH_list_index, 2, ifelse(id %in% Com_HH_list_index, 1, 3))
 			output$id = id
 			return(output)}, mc.cores=numcores)
+
+			no_heterogeneity_values = mclapply(c(Vol_HH_list_index), function(id) {
+			output = tryCatch(counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param_final$sick, param_final$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x, within_hh_heterogeneity = list(omega=FALSE, gamma=FALSE, delta=FALSE, theta_bar=FALSE)), error=function(x) x)
+			output = as.data.frame(output)
+			output$Y = data_hh_list[[id]]$Income; 
+			output$m_observed = data_hh_list[[id]]$M_expense; 
+			output$fit_type = ifelse(id %in% Vol_HH_list_index, 2, ifelse(id %in% Com_HH_list_index, 1, 3))
+			output$id = id; 
+			return(output)
+			}, mc.cores = numcores)
 		}
 		fit_values = do.call('rbind', fit_values)
 		fit_values = as.data.frame(fit_values)
 		fit_values$job_index = job_index; 
+
+		no_heterogeneity_values = do.call('rbind', no_heterogeneity_values)
+		no_heterogeneity_values = as.data.frame(no_heterogeneity_values)
+		no_heterogeneity_values$job_index = job_index; 
+
 
 		if (Sys.info()[['sysname']] == 'Windows') {
 		  clusterExport(cl, c('transform_param_final', 'param_final','counterfactual_household_draw_theta_kappa_Rdraw'))
@@ -136,7 +161,7 @@ observed_data = observed_data %>% mutate_at(c('M_expense', 'Income'), function(x
 
 saveRDS(fit_values, file='../../Obj_for_manuscript/fit_values.rds')
 saveRDS(observed_data, file='../../Obj_for_manuscript/observed_data.rds')
-
+saveRDS(no_heterogeneity_values, file='../../Obj_for_manuscript/no_heterogeneity_values.rds')
 
 all_param_final = list()
 job_index_normalized = 1;
@@ -159,6 +184,9 @@ all_param_final_2$beta_sick = as.data.frame(all_param_final_2$beta_sick); names(
 all_param_final_2$beta_delta = as.data.frame(all_param_final_2$beta_delta); names(all_param_final_2$beta_delta) = c(names(var_ind(data_hh_list[[1]]) %>% as.data.frame))
 all_param_final_2$beta_r = as.data.frame(all_param_final_2$beta_r); names(all_param_final_2$beta_r) = c(names(var_hh(data_hh_list[[1]]) %>% as.data.frame))
 all_param_final_2$beta_omega = as.data.frame(all_param_final_2$beta_omega); names(all_param_final_2$beta_omega) = c(names(var_hh(data_hh_list[[1]]) %>% as.data.frame))
+for (name_i in c('sigma_theta', 'sigma_thetabar', 'sigma_r', 'sigma_delta', 'sigma_gamma', 'sigma_omega')) {
+	all_param_final_2[[name_i]] = exp(all_param_final_2[[name_i]])
+}
 
 saveRDS(all_param_final_2, file='../../Obj_for_manuscript/all_param_final_2.rds')
 

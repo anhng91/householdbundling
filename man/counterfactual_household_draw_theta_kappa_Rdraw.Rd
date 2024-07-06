@@ -19,7 +19,7 @@ counterfactual_household_draw_theta_kappa_Rdraw(
   constraint_function,
   within_hh_heterogeneity = list(omega = TRUE, gamma = TRUE, delta = TRUE, theta_bar =
     TRUE),
-  cap_theta_draw_normalized = 0.95
+  income_vec = NA
 )
 }
 \arguments{
@@ -43,7 +43,7 @@ counterfactual_household_draw_theta_kappa_Rdraw(
 
 \item{within_hh_heterogeneity}{is a list with list names gamma, delta, and theta_bar. If a list element is true, within-hh-heterogeneity is allowed.}
 
-\item{cap_theta_draw_normalized}{is an index to insure that the moment generating function is finite.}
+\item{income_vec}{a vector of income net premium at different number of voluntarily insured members (from 0 to HHsize_s)}
 }
 \value{
 a list that includes the draws of household-related objects,taking into account the sick parameters and the distribution of coverage, the optimal insurance choice, the amount of oop, and the cost to the insurance company
@@ -55,7 +55,7 @@ all possible bundles.
 }
 \examples{
 constant_f = function(x) x
-counterfactual_household_draw_theta_kappa_Rdraw(3, sample_data_and_parameter$param, n_draw_halton = 1000, n_draw_gauss = 10, sick_parameters = sick_parameters_sample, xi_parameters = xi_parameters_sample, u_lowerbar = -10, policy_mat_hh=policy_mat[[3]], seed_number=1, constraint_function=constant_f, within_hh_heterogeneity = list(omega=TRUE, gamma=TRUE, delta=TRUE, theta_bar=TRUE), cap_theta_draw_normalized = 0.95)
+counterfactual_household_draw_theta_kappa_Rdraw(3, sample_data_and_parameter$param, n_draw_halton = 1000, n_draw_gauss = 10, sick_parameters = sick_parameters_sample, xi_parameters = xi_parameters_sample, u_lowerbar = -10, policy_mat_hh=policy_mat[[3]], seed_number=1, constraint_function=constant_f, within_hh_heterogeneity = list(omega=TRUE, gamma=TRUE, delta=TRUE, theta_bar=TRUE))
 
 
 }
