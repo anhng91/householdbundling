@@ -441,7 +441,7 @@ U = function(input, income_effect=TRUE) {
 #' @export
 #'
 #' @examples
-#' m_fun(list(R_draw = runif(10), theta_draw = cbind(runif(10)/10, runif(10)/10), delta = c(0.5, 0.5), omega=0.1, gamma = c(0.5, 0.5), kappa_draw = matrix(1, nrow=10, ncol=2), HHsize = 2))
+#' m_fun	(list(R_draw = runif(10), theta_draw = cbind(runif(10)/10, runif(10)/10), delta = c(0.5, 0.5), omega=0.1, gamma = c(0.5, 0.5), kappa_draw = matrix(1, nrow=10, ncol=2), HHsize = 2))
 #' 
 m_fun = function(input, income_effect=TRUE) {
 	if (!income_effect) {

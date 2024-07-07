@@ -3,9 +3,9 @@ if (length(args)<2) {
   if (Sys.info()[['sysname']] == 'Windows') {
     numcores = 24;
   } else {
-    numcores = 4;
+    numcores = 8;
   }
-  job_index = 1;  
+  job_index = 4;  
 } else {
   job_index = as.numeric(args[1]);
   numcores = as.numeric(args[2]); 
@@ -94,9 +94,9 @@ if (remote) {
   sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
   sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 } else {
-  sample_r_theta = sample(sample_r_theta, 200, replace=TRUE)
-  sample_identify_pref = sample(sample_identify_pref, 500, replace=TRUE)
-  sample_identify_theta = sample(sample_identify_theta, 500, replace=TRUE)
+  sample_r_theta = sample(sample_r_theta, 4000, replace=TRUE)
+  sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
+  sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 }
 
 
@@ -195,6 +195,8 @@ n_involuntary = do.call('c', lapply(sample_r_theta, function(output_hh_index) da
 n_halton_at_r = 100; 
 
 initial_param_trial = init_param
+
+initial_param_trial[[x_transform[[2]]$beta_delta[1]]] = 1
 
 compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE, estimate_pref=TRUE) {
   print(paste0('sigma_theta value is', x_stheta))
@@ -320,7 +322,7 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
     return(list(moment_realized_expense_val, moment_realized_expense_deriv))
   }
 
-  active_index = x_transform[[2]][c(var_list, 'beta_theta', 'beta_theta_ind', 'sigma_thetabar')] %>% unlist()
+  active_index = x_transform[[2]][c('sigma_thetabar', 'beta_theta', 'beta_theta_ind', var_list)] %>% unlist()
   tol = 1e-4
 
   iteration = 1; 
@@ -335,6 +337,9 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
 
   if (estimate_theta) {
     optim_pref_theta = splitfngr::optim_share(param_trial_here[active_index], function(x_pref_theta) {
+      param_trial_inner_theta = param_trial_here
+      param_trial_inner_theta[active_index] = x_pref_theta 
+      x_transform = transform_param(param_trial_inner_theta, return_index = TRUE)
       if (max(abs(x_pref_theta)) > 10) {
         return(list(NA, rep(NA, length(active_index))))
       }
@@ -342,9 +347,6 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
       if (is.nan(output_theta[[1]])) {
         return(list(NA, rep(NA, length(active_index))))
       }
-      param_trial_inner_theta = param_trial_here
-      param_trial_inner_theta[active_index] = x_pref_theta 
-      x_transform = transform_param(param_trial_inner_theta, return_index = TRUE)
       # if (x_transform[[1]]$sigma_thetabar < -3 | x_transform[[1]]$sigma_delta > 2) {
       #   return(list(NA, rep(NA, length(active_index))))
       # }
@@ -497,7 +499,7 @@ param_final$sick = sick_parameters
 param = param_final 
 transform_param_final = transform_param(param_final$other)
 
-fit_sample = sample(Vol_HH_list_index, 2000)
+fit_sample = sample(Vol_HH_list_index, 4000)
 
 if (Sys.info()[['sysname']] == 'Windows') {
   clusterExport(cl, c('transform_param_final', 'param','counterfactual_household_draw_theta_kappa_Rdraw'))
