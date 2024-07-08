@@ -1050,8 +1050,9 @@ identify_theta = function(data_set, param, n_draw_halton = 1000) {
 			theta_bar[, i] = halton_mat_list$individual_factor[,i] * exp(input_vec_transformed$sigma_thetabar) + input_vec_transformed$mean_beta_theta_ind[i] * halton_mat_list$household_random_factor + input_vec_transformed$mean_beta_theta[i]; 
 		}
 		z = -theta_bar/s_theta
-		Em = matrix(lapply(theta_bar + dnorm(z)/(1 - pnorm(z))*s_theta, function(x) ifelse(is.nan(x) | is.infinite(x), 0, x)) %>% unlist(), ncol = HHsize); 
-		Em2 = Em^2 + matrix(lapply(s_theta^2 * (1 + (z)*dnorm(z)/(1 - pnorm(z)) - (dnorm(z)/(1 - pnorm(z)))^2), function(x) ifelse(is.nan(x) | is.infinite(x), 0, x)) %>% unlist(), ncol = HHsize)
+		Em = matrix(lapply(theta_bar + dnorm(z)/(1 - pnorm(z))*s_theta, function(x) ifelse(is.nan(x) | is.infinite(x) | x < 0, 0, x)) %>% unlist(), ncol = HHsize); 
+
+		Em2 = Em^2 + (matrix(lapply(s_theta^2 * (1 + (z)*dnorm(z)/(1 - pnorm(z)) - (dnorm(z)/(1 - pnorm(z)))^2), function(x) ifelse(is.nan(x) | is.infinite(x), 0, x)) %>% unlist(), ncol = HHsize)) * (Em > 0)
 		moment = matrix(apply(Em[,theta_pos_index] %>% matrix(ncol = length(theta_pos_index)), 1, function(x) (theta[theta_pos_index] - x)^2), ncol = length(theta_pos_index)) + 
 			matrix(apply(Em2[,theta_pos_index] %>% matrix(ncol = length(theta_pos_index)), 1, function(x) ((theta[theta_pos_index])^2 - x)^2), ncol = length(theta_pos_index))
 		sum_moment = mean(rowSums(moment))
@@ -1168,7 +1169,7 @@ uniroot_usr = function(f, interval_init) {
 				return(uniroot(f, interval_init))
 			} else {
 				while (f(interval_init[2]) < 0 & interval_init[2] < 10) {
-					interval_init[2] = interval_init[2] * 2
+					interval_init[2] = interval_init[2] + 0.2
 				}
 				if (f(interval_init[2]) < 0) {
 					if (f(0.01) > 0) {
@@ -1430,13 +1431,15 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 
 		optimal_U_index = sort(constraint_function(unlist(U_list)), index.return=TRUE, decreasing=TRUE)$ix[1]
 
+		optimal_U_index = max(which(unlist(U_list) == U_list[optimal_U_index]))
+
 		vol_sts_counterfactual = rep(0, HHsize);
 
 		if (optimal_U_index > 1) {
 			vol_sts_counterfactual[member_order[1:(optimal_U_index - 1)]] = 1
 		}
 
-		f_wtp = function(list_1, list_2, wtp) {
+		f_wtp = function(list_1, list_2, wtp, income_effect) {
 			un_censored_R_1 = list_1$un_censored_R; 
 			kappa_draw_1 = list_1$kappa_draw; 
 			un_censored_R_2 = list_2$un_censored_R - wtp; 
@@ -1447,7 +1450,7 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 		}
 
 		if (optimal_U_index > 1) {
-			temp_f = function(x) f_wtp(list(un_censored_R = un_censored_R[[1]], kappa_draw = kappa_draw[[1]]), list(un_censored_R = un_censored_R[[optimal_U_index]] + (income_vec[1] - income_vec[optimal_U_index]), kappa_draw = kappa_draw[[optimal_U_index]]),x)
+			temp_f = function(x) f_wtp(list(un_censored_R = un_censored_R[[1]], kappa_draw = kappa_draw[[1]]), list(un_censored_R = un_censored_R[[optimal_U_index]] + (income_vec[1] - income_vec[optimal_U_index]), kappa_draw = kappa_draw[[optimal_U_index]]),x, income_effect)
 			wtp = uniroot_usr(temp_f, c(0,0.1))$root  
 		} else {
 			wtp = 0
@@ -1456,17 +1459,30 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 		wtp_uni = rep(0, HHsize)
 
 		for (i in elig_member_index) {
-			temp_f = function(x) f_wtp(list(un_censored_R = un_censored_R[[1]], kappa_draw = kappa_draw[[1]]), list(un_censored_R = un_censored_R_uni[[i]] + (income_vec[1] - income_vec[2]), kappa_draw = kappa_draw_uni[[i]]),x)
-			wtp_uni[i] =  uniroot_usr(temp_f, c(-0.1,0.1))$root  
-			
+			temp_f = function(x) f_wtp(list(un_censored_R = un_censored_R[[1]], kappa_draw = kappa_draw[[1]]), list(un_censored_R = un_censored_R_uni[[i]] + (income_vec[1] - income_vec[2]), kappa_draw = kappa_draw_uni[[i]]),x, income_effect)
+			wtp_uni[i] =  uniroot_usr(temp_f, c(0,0.1))$root  
+			temp_f = function(x) f_wtp(list(un_censored_R = un_censored_R[[1]], kappa_draw = kappa_draw[[1]]), list(un_censored_R = un_censored_R_uni[[i]] + (income_vec[1] - income_vec[2]), kappa_draw = kappa_draw_uni[[i]]),x,income_effect = FALSE)
+			if (is.na(wtp_uni[i])) {
+				wtp_uni[i] = uniroot_usr(temp_f, c(0,0.1))$root
+			}     
 		}
 
 		if (data_hh_i$HHsize_s[1] >= 2) {
-			temp_f = function(x) f_wtp(list(un_censored_R = un_censored_R[[1]], kappa_draw = kappa_draw[[1]]), list(un_censored_R = un_censored_R[[3]] + (income_vec[1] - income_vec[3]), kappa_draw = kappa_draw[[3]]),x)
+			temp_f = function(x) f_wtp(list(un_censored_R = un_censored_R[[1]], kappa_draw = kappa_draw[[1]]), list(un_censored_R = un_censored_R[[3]] + (income_vec[1] - income_vec[3]), kappa_draw = kappa_draw[[3]]),x, income_effect)
 			if (abs(temp_f(0)) < 1e-5) {
 				wtp_2 = 0
 			} else {
-				wtp_2 = uniroot_usr(temp_f, c(0,0.1))$root 
+				upper_bound = sum(sort(wtp_uni, decreasing=TRUE)[1:2])
+				if (!(is.na(upper_bound))) {
+					wtp_2 = uniroot_usr(temp_f, c(0,upper_bound))$root 
+					if (is.na(wtp_2)) {
+						temp_f = function(x) f_wtp(list(un_censored_R = un_censored_R[[1]], kappa_draw = kappa_draw[[1]]), list(un_censored_R = un_censored_R[[3]] + (income_vec[1] - income_vec[3]), kappa_draw = kappa_draw[[3]]),x, income_effect = FALSE)
+						wtp_2 = uniroot_usr(temp_f, c(0,upper_bound))$root 
+					}
+				} else {
+					wtp_2 = NA 	
+				}
+				
 			}		
 		} else {
 			wtp_2 = 0; 

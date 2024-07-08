@@ -99,6 +99,10 @@ if (remote) {
   sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 }
 
+for (index in sample_identify_theta) {
+  data_hh_list[[index]]$Income = log(data_hh_list[[index]]$Income * (data_hh_list[[index]]$Income > 0) + exp(1))
+}
+
 
 message('merging household frames')
 data = do.call('rbind', data_hh_list[sample_index])
@@ -197,6 +201,9 @@ n_halton_at_r = 100;
 initial_param_trial = init_param
 
 initial_param_trial[[x_transform[[2]]$beta_delta[1]]] = 1
+initial_param_trial[[x_transform[[2]]$beta_theta_ind[1]]] = 0.5
+initial_param_trial[[x_transform[[2]]$beta_omega[1]]] = 0.5
+initial_param_trial[[x_transform[[2]]$sigma_thetabar[1]]] = 1
 
 compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE, estimate_pref=TRUE) {
   print(paste0('sigma_theta value is', x_stheta))
@@ -225,10 +232,7 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
           }, mc.cores=numcores))
     }
 
-    income_mat = as.numeric(Hmisc::cut2(t(mat_YK)[,3], g=5))
-    dummy_mat = (fastDummies::dummy_cols(income_mat))[,-1]
-    mat_YK_modify = cbind(mat_YK[1,], mat_YK[2,], dummy_mat, apply(dummy_mat, 2, function(x) x * mat_YK[1,]))
-    mat_YK = t(mat_YK_modify)
+    mat_YK = rbind(mat_YK, do.call('c', lapply(data_hh_list[sample_identify_pref], function(x) x$Income + 2)))
 
     if (Sys.info()[['sysname']] == 'Windows') {
       clusterExport(cl, 'x_transform',envir=environment())
@@ -401,7 +405,7 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
   root_r = do.call('c',lapply(moment_eligible_hh_output, function(output_hh) output_hh$root_r))
   hh_theta = do.call('c',lapply(moment_eligible_hh_output, function(output_hh) output_hh$hh_theta))
   fx_r = function(x_r, derivative=FALSE, silent=TRUE) {
-    if (max(abs(x_r)) > 10) {
+    if (max(abs(x_r)) > 3) {
       return(NA)
     }
     
@@ -461,6 +465,8 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
   summary(Em_full_insurance * full_insurance_indicator_ind_level + Em_no_insurance * no_insurance_indicator_ind_level) %>% print
   summary(mat_M_rtheta[,1]) %>% print
 
+  initial_param_trial <<- param_trial_here
+
   if (!(estimate_theta)) {
     optim_pref_theta = list()
     optim_pref_theta$value = 0 
@@ -483,11 +489,10 @@ estimate_r_thetabar = optimize(function(xs) {
     }
     return(output)
   }
-}, c(-2,-1)) 
+}, c(-2,0)) 
 
 
 param_trial = compute_inner_loop(estimate_r_thetabar$minimum, return_result=TRUE, estimate_theta=TRUE, estimate_pref = TRUE)
-# param_trial = compute_inner_loop(-2, return_result=TRUE, estimate_theta=FALSE, estimate_pref = FALSE)
 
 message('computing final param_trial')
 
@@ -514,7 +519,7 @@ if (Sys.info()[['sysname']] == 'Windows') {
   })
 } else {
   fit_values = mclapply(c(fit_sample), function(id) {
-  output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
+  output = tryCatch(counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x), error=function(e) e)
   output = as.data.frame(output)
   output$Y = data_hh_list[[id]]$Income; 
   output$m_observed = data_hh_list[[id]]$M_expense; 
