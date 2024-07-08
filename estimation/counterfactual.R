@@ -62,7 +62,7 @@ list_hh_2012 = unlist(lapply(1:length(data_hh_list), function(hh_index) ifelse(d
 list_hh_2012 = list_hh_2012[which(!(is.na(list_hh_2012)))]
 
 
-list_hh_2012 = sample(list_hh_2012, 100)
+list_hh_2012 = sample(list_hh_2012, 500)
 
 data_2012 = benchmark %>% filter(id %in% list_hh_2012);
 
@@ -79,7 +79,7 @@ if (Sys.info()[['sysname']] == 'Windows') {
   clusterExport(cl,c('Vol_HH_list_index', 'Com_HH_list_index', 'out_sample_index'))
 }
 
-for (job_index in 0:1) {
+for (job_index in 3:4) {
 	if (file.exists(paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))) {
 		param_final <- readRDS(paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
 		param_final$other = init_param
@@ -161,10 +161,18 @@ for (job_index in 0:1) {
 
 		bd_output = as.data.frame(bd_output)
 		pb_output = as.data.frame(pb_output)
-		pb_premium_vector = do.call('rbind',lapply(pb_prem, function(x) x[[2]])); names(pb_premium_vector) = c('p1','p2')
-		bd_premium_vector = do.call('rbind',lapply(bd_prem, function(x) x[[2]])); names(bd_premium_vector) = c('p1','p2')
-		bd_output = cbind(bd_output, bd_premium_vector);  
-		plot_1 = ggplot(data = bd_output, aes(x = (p1), y = (p2), fill = surplus, color = budget >= budget_2012)) + geom_tile(linewidth=0.3) + geom_text(aes(label = round(surplus,2)), color = 'white',size=2) + theme_bw() + theme(legend.position = "none") + xlab(expression(p[1])) + ylab(expression(p[2]/p[1])) + scale_y_continuous(breaks=seq(1,2,length.out=6))
+		pb_premium_vector = as.data.frame(do.call('rbind',lapply(pb_prem, function(x) x[[2]]))); names(pb_premium_vector) = c('p1','p2')
+		bd_premium_vector = as.data.frame(do.call('rbind',lapply(bd_prem, function(x) x[[2]]))); names(bd_premium_vector) = c('p1','p2')
+		bd_output = cbind(bd_output, bd_premium_vector); names(bd_output)[c(3,4)] = c('p1','p2')
+		bd_output = bd_output %>% mutate(p_ratio = p2/p1); 
+		bd_output$p_ratio[is.nan(bd_output$p_ratio)] = 1; 
+		pb_output = cbind(pb_output, pb_premium_vector)
+		plot_1 = ggplot(data = bd_output , aes(x = p1, y = p_ratio, fill = surplus, color = budget >= budget_2012)) + geom_tile(linewidth=0.3) + geom_text(aes(label = round(surplus,3)), color = 'white',size=2) + theme_bw() + theme(legend.position = "none") + xlab(expression(p[1])) + ylab(expression(p[2]/p[1])) + scale_y_continuous(breaks=seq(1,2,length.out=6))
+
+		graph_data = rbind(pb_output, bd_output %>% select(-p_ratio) %>% filter(p2 == 2 * p1), bd_output %>% select(-p_ratio) %>% filter(p2 == 1.9 * p1))
+		graph_data$type = c(rep('PB', nrow(pb_output)), rep('IP', nrow(bd_output %>% filter(p2 == 2 * p1))), rep('BD', nrow(bd_output %>% filter(p2 == 1.9 * p1))))
+		ggplot(data = graph_data, aes(x = p2, y = surplus, linetype= budget >= budget_2012, color=type)) + geom_line()
+
 
 		stop()
 

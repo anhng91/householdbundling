@@ -200,10 +200,10 @@ n_halton_at_r = 100;
 
 initial_param_trial = init_param
 
-initial_param_trial[[x_transform[[2]]$beta_delta[1]]] = 1
-initial_param_trial[[x_transform[[2]]$beta_theta_ind[1]]] = 0.5
-initial_param_trial[[x_transform[[2]]$beta_omega[1]]] = 0.5
-initial_param_trial[[x_transform[[2]]$sigma_thetabar[1]]] = 1
+# initial_param_trial[[x_transform[[2]]$beta_delta[1]]] = 1
+# initial_param_trial[[x_transform[[2]]$beta_theta_ind[1]]] = 0.5
+# initial_param_trial[[x_transform[[2]]$beta_omega[1]]] = 0.5
+# initial_param_trial[[x_transform[[2]]$sigma_thetabar[1]]] = 1
 
 compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE, estimate_pref=TRUE) {
   print(paste0('sigma_theta value is', x_stheta))
@@ -397,7 +397,7 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
 
   if (Sys.info()[['sysname']] == 'Windows') {
     clusterExport(cl, c('x_transform', 'sick_parameters', 'xi_parameters'),envir=environment())
-    moment_eligible_hh_output = parLapply(cl, sample_r_theta, function(mini_data_index) tryCatch(household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], n_halton_at_r, 10, sick_parameters, xi_parameters, u_lowerbar = -1), error=function(e) e), mc.cores=numcores)
+    moment_eligible_hh_output = parLapply(cl, sample_r_theta, function(mini_data_index) tryCatch(household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], n_halton_at_r, 10, sick_parameters, xi_parameters, u_lowerbar = -1), error=function(e) e))
   } else {
     moment_eligible_hh_output = mclapply(sample_r_theta, function(mini_data_index) tryCatch(household_draw_theta_kappa_Rdraw(mini_data_index, x_transform[[1]], n_halton_at_r, 10, sick_parameters, xi_parameters, u_lowerbar = -1), error=function(e) e), mc.cores=numcores)
   }

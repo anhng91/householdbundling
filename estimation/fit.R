@@ -1,6 +1,6 @@
 args = commandArgs(trailingOnly=TRUE)
 if (length(args)<2) { 
-  numcores = 20;  
+  numcores = 4;  
 } else {
   numcores = as.numeric(args[2]); 
 }
@@ -64,7 +64,8 @@ if (Sys.info()[['sysname']] == 'Windows') {
   clusterExport(cl,c('Vol_HH_list_index', 'Com_HH_list_index', 'out_sample_index'))
 }
 
-for (job_index in 0:1) {
+for (job_index in 0:4) {
+	print(paste0('computing at index = ', job_index))
 	if (file.exists(paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))) {
 		param_final <- readRDS(paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
 		param_final$other = init_param
@@ -165,7 +166,7 @@ saveRDS(no_heterogeneity_values, file='../../Obj_for_manuscript/no_heterogeneity
 
 all_param_final = list()
 job_index_normalized = 1;
-for (job_index in 0:1) {
+for (job_index in 0:4) {
 	if (file.exists(paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))) {
 		param_final <- readRDS(paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
 		all_param_final[[job_index_normalized]] = transform_param(param_final$other)
@@ -203,7 +204,6 @@ correlation_values = lapply(all_param_final, function(x) do.call('c',lapply(data
 	cor_matrix_vec = c(cor_matrix)
 	return(cor_matrix_vec); 
 })))
-
 
 
 saveRDS(correlation_values, file='../../Obj_for_manuscript/correlation_values.rds')
