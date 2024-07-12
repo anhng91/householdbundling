@@ -58,8 +58,8 @@ d_mean_E_XW = function(mu, sigma, X) {
 
 truncated_normal_mean = function(mu, sigma) {
 	output = mu  + dnorm(0, mean=mu, sd=sigma)/(1 - pnorm(0, mean=mu, sd=sigma))*sigma
-	if (is.infinite(output) | is.nan(output)) {
-		return(NA)
+	if (is.infinite(output) | is.nan(output) | (output < 0)) {
+		return(0)
 	} else {
 		return(output)
 	}
@@ -90,6 +90,8 @@ d_truncated_normal_mean = function(mu, sigma) {
  
 	if (is.infinite(output) | is.nan(output)) {
 		return(list(NA, NA))
+	} else if (output < 0) {
+		return(list(0,0))
 	} else {
 		return(d_output)
 	}
@@ -111,6 +113,8 @@ truncated_normal_variance = function(mu, sigma) {
 	output = sigma^2 * (1 + (0 - mu)/sigma * dnorm(0, mean=mu, sd=sigma)/Z - (dnorm(0, mean=mu, sd=sigma))^2/Z^2)
 	if (is.infinite(output) | is.nan(output)) {
 		return(NA)
+	} else if (output < 0) {
+		return(0)
 	} else {
 		return(output)
 	}
@@ -140,6 +144,8 @@ d_truncated_normal_variance = function(mu, sigma) {
 
 	if (is.infinite(output) | is.nan(output)) {
 		return(list(NA, NA))
+	} else if (output < 0) {
+		return(list(0,0))
 	} else {
 		return(d_output)
 	}
@@ -254,8 +260,9 @@ moment_ineligible_hh = function(data_set, param) {
 	X_ind = data_set$X_ind; 
 	X_hh = data_set$X_hh;
 	sick_p = data_set$sick_p;
-	R_draw = data_set$R_draw[[1]] * (data_set$R_draw[[1]] > 0);
+	R_draw = data_set$R_draw[[1]] * (data_set$R_draw[[1]] > 0) + 1;
 	kappa_draw = data_set$kappa_draw[[1]]; 
+
 	
 
 	HHsize = data_hh_i$HHsize[1]
@@ -306,48 +313,48 @@ moment_ineligible_hh = function(data_set, param) {
 		obj12 = d_mean_E_XW(mean_beta_gamma[mem_index], exp(param$sigma_gamma), 1/(1 + kappa_draw[,mem_index])^2)
 		obj13 = d_mean_E_XW(mean_beta_omega, exp(param$sigma_omega), R_draw^2)
 
-		m_draw[mem_index] = mean(theta_draw[,mem_index] * kappa_draw[,mem_index] + obj2 * theta_draw * obj4 * obj1 * kappa_draw[,mem_index])
+		m_draw[mem_index] = mean(theta_draw[,mem_index] * kappa_draw[,mem_index] + obj2 * theta_draw * obj4 * obj1 * kappa_draw[,mem_index] * (data_set$R_draw[[1]] > 0))
 		
-		d_m_draw$mean_beta_delta[mem_index] = mean(obj5$mu * theta_draw * obj4 * obj1 * kappa_draw[,mem_index])
+		d_m_draw$mean_beta_delta[mem_index] = mean(obj5$mu * theta_draw * obj4 * obj1 * kappa_draw[,mem_index] * (data_set$R_draw[[1]] > 0))
 
-		d_m_draw$sigma_delta[mem_index] = mean(obj5$sigma * theta_draw * obj4 * obj1 * exp(param$sigma_delta) * kappa_draw[,mem_index])
+		d_m_draw$sigma_delta[mem_index] = mean(obj5$sigma * theta_draw * obj4 * obj1 * exp(param$sigma_delta) * kappa_draw[,mem_index] * (data_set$R_draw[[1]] > 0))
 
-		d_m_draw$sigma_omega[mem_index] = mean(obj2 * theta_draw * obj6$sigma * exp(param$sigma_omega) * obj1 * kappa_draw[,mem_index]);
+		d_m_draw$sigma_omega[mem_index] = mean(obj2 * theta_draw * obj6$sigma * exp(param$sigma_omega) * obj1 * kappa_draw[,mem_index] * (data_set$R_draw[[1]] > 0));
 
-		d_m_draw$mean_beta_omega[mem_index] = mean(obj2 * theta_draw * obj6$mu * obj1 * kappa_draw[,mem_index]);
+		d_m_draw$mean_beta_omega[mem_index] = mean(obj2 * theta_draw * obj6$mu * obj1 * kappa_draw[,mem_index] * (data_set$R_draw[[1]] > 0));
 
-		d_m_draw$sigma_gamma[mem_index] = mean(obj2 * theta_draw * obj4 * obj7$sigma * exp(param$sigma_gamma) * kappa_draw[,mem_index])
+		d_m_draw$sigma_gamma[mem_index] = mean(obj2 * theta_draw * obj4 * obj7$sigma * exp(param$sigma_gamma) * kappa_draw[,mem_index] * (data_set$R_draw[[1]] > 0))
 
-		d_m_draw$mean_beta_gamma[mem_index] = mean(obj2 * theta_draw * obj4 * obj7$mu * kappa_draw[,mem_index])
+		d_m_draw$mean_beta_gamma[mem_index] = mean(obj2 * theta_draw * obj4 * obj7$mu * kappa_draw[,mem_index] * (data_set$R_draw[[1]] > 0))
 
 
 		m_draw2[mem_index] = mean(theta_draw[,mem_index]^2 * kappa_draw[,mem_index]^2 + 
-			2 * theta_draw[,mem_index]^2 * obj2 * obj4 * obj1 * kappa_draw[,mem_index]^2 + 
-			theta_draw[,mem_index]^2 * (obj2^2 + obj8) * obj9 * obj11 * kappa_draw[,mem_index]^2)
+			2 * theta_draw[,mem_index]^2 * obj2 * obj4 * obj1 * kappa_draw[,mem_index]^2 * (data_set$R_draw[[1]] > 0) + 
+			theta_draw[,mem_index]^2 * (obj2^2 + obj8) * obj9 * obj11 * kappa_draw[,mem_index]^2 * (data_set$R_draw[[1]] > 0))
 
 		d_m_draw2$mean_beta_gamma[mem_index] = mean(
-			2 * theta_draw[,mem_index]^2 * obj2 * obj4 * obj7$mu * kappa_draw[,mem_index]^2 + 
-			theta_draw[,mem_index]^2 * (obj2^2 + obj8) * obj9 * obj12$mu * kappa_draw[,mem_index]^2)
+			2 * theta_draw[,mem_index]^2 * obj2 * obj4 * obj7$mu * kappa_draw[,mem_index]^2 * (data_set$R_draw[[1]] > 0) + 
+			theta_draw[,mem_index]^2 * (obj2^2 + obj8) * obj9 * obj12$mu * kappa_draw[,mem_index]^2 * (data_set$R_draw[[1]] > 0))
 
 		d_m_draw2$sigma_gamma[mem_index] = mean(
-			2 * theta_draw[,mem_index]^2 * obj2 * obj4 * obj7$sigma * exp(param$sigma_gamma) * kappa_draw[,mem_index]^2+ 
-			theta_draw[,mem_index]^2 * (obj2^2 + obj8) * obj9 * obj12$sigma * exp(param$sigma_gamma) * kappa_draw[,mem_index]^2)
+			2 * theta_draw[,mem_index]^2 * obj2 * obj4 * obj7$sigma * exp(param$sigma_gamma) * kappa_draw[,mem_index]^2 * (data_set$R_draw[[1]] > 0)+ 
+			theta_draw[,mem_index]^2 * (obj2^2 + obj8) * obj9 * obj12$sigma * exp(param$sigma_gamma) * kappa_draw[,mem_index]^2 * (data_set$R_draw[[1]] > 0))
 
 		d_m_draw2$mean_beta_omega[mem_index] = mean(
-			2 * theta_draw[,mem_index]^2 * obj2 * obj6$mu * obj1 * kappa_draw[,mem_index]^2 + 
-			theta_draw[,mem_index]^2 * (obj2^2 + obj8) * obj13$mu * obj11 * kappa_draw[,mem_index]^2)
+			2 * theta_draw[,mem_index]^2 * obj2 * obj6$mu * obj1 * kappa_draw[,mem_index]^2 * (data_set$R_draw[[1]] > 0) + 
+			theta_draw[,mem_index]^2 * (obj2^2 + obj8) * obj13$mu * obj11 * kappa_draw[,mem_index]^2 * (data_set$R_draw[[1]] > 0))
 
 		d_m_draw2$sigma_omega[mem_index] = mean(
-			2 * theta_draw[,mem_index]^2 * obj2 * obj6$sigma * exp(param$sigma_omega) * obj1 * kappa_draw[,mem_index]^2 + 
-			theta_draw[,mem_index]^2 * (obj2^2 + obj8) * obj13$sigma * exp(param$sigma_omega) * obj11 * kappa_draw[,mem_index]^2)
+			2 * theta_draw[,mem_index]^2 * obj2 * obj6$sigma * exp(param$sigma_omega) * obj1 * kappa_draw[,mem_index]^2 * (data_set$R_draw[[1]] > 0)+ 
+			theta_draw[,mem_index]^2 * (obj2^2 + obj8) * obj13$sigma * exp(param$sigma_omega) * obj11 * kappa_draw[,mem_index]^2 * (data_set$R_draw[[1]] > 0))
 
 		d_m_draw2$mean_beta_delta[mem_index] = mean(
-			2 * theta_draw[,mem_index]^2 * obj5$mu * obj4 * obj1 * kappa_draw[,mem_index]^2 + 
-			theta_draw[,mem_index]^2 * (2 * obj2 * obj5$mu + obj10$mu) * obj9 * obj11 * kappa_draw[,mem_index]^2)
+			2 * theta_draw[,mem_index]^2 * obj5$mu * obj4 * obj1 * kappa_draw[,mem_index]^2 * (data_set$R_draw[[1]] > 0)+ 
+			theta_draw[,mem_index]^2 * (2 * obj2 * obj5$mu + obj10$mu) * obj9 * obj11 * kappa_draw[,mem_index]^2 * (data_set$R_draw[[1]] > 0))
 
 		d_m_draw2$sigma_delta[mem_index] = mean(
-			2 * theta_draw[,mem_index]^2 * obj5$sigma * exp(param$sigma_delta) * obj4 * obj1 * kappa_draw[,mem_index]^2 + 
-			theta_draw[,mem_index]^2 * (2 * obj2 * obj5$sigma * exp(param$sigma_delta) + obj10$sigma * exp(param$sigma_delta)) * obj9 * obj11 * kappa_draw[,mem_index]^2)
+			2 * theta_draw[,mem_index]^2 * obj5$sigma * exp(param$sigma_delta) * obj4 * obj1 * kappa_draw[,mem_index]^2 * (data_set$R_draw[[1]] > 0) + 
+			theta_draw[,mem_index]^2 * (2 * obj2 * obj5$sigma * exp(param$sigma_delta) + obj10$sigma * exp(param$sigma_delta)) * obj9 * obj11 * kappa_draw[,mem_index]^2 * (data_set$R_draw[[1]] > 0))
 	}
 
 	d_m_draw$mean_beta_delta = apply(X_ind, 1, function(x) x * d_m_draw$mean_beta_delta); 
@@ -425,7 +432,10 @@ U = function(input, income_effect=TRUE) {
 	if (!income_effect) {
 		output = input$R_draw
 	} else {
-		output = lapply(((input$R_draw * (input$R_draw > 0) + 1)^(1 - input$omega)-1)/(1 - input$omega), function(x) ifelse(is.nan(x), 0, x)) %>% unlist() * (input$R_draw > 0) - rowSums(matrix(t(apply(input$theta_draw, 1, function(x) x * input$delta)), ncol=input$HHsize) * matrix(t(apply(input$kappa_draw, 1, function(x) unlist(lapply(((x + 1)^(1 - input$gamma) - 1)/(1 - input$gamma),  function(x) ifelse(is.nan(x), 0, x))))), ncol=input$HHsize)) 
+		output = lapply(((input$R_draw * (input$R_draw > 0) + 1)^(1 - input$omega)-1)/(1 - input$omega), function(x) ifelse(is.nan(x), 0, x)) %>% unlist() * (input$R_draw > 0) - rowSums(matrix(t(apply(input$theta_draw, 1, function(x) x * input$delta)), ncol=input$HHsize) * matrix(t(apply(input$kappa_draw, 1, function(x) unlist(lapply(((x + 1)^(1 - input$gamma) - 1)/(1 - input$gamma),  function(x) ifelse(is.nan(x), 0, x))))), ncol=input$HHsize)) * (input$R_draw > 0) + input$R_draw * (input$R_draw <= 0);
+		output_min = min(output[which(input$R_draw > 0)]);
+		output_min = ifelse(is.infinite(output_min), 0, output_min)
+		output = output + output_min * (input$R_draw <= 0);  
 	}
 	return(output)
 }
@@ -553,14 +563,20 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 				return(x)
 			}) %>% unlist()
 
-			theta_draw[, i] = theta_draw[, i] * halton_mat_list$sick[, i]
+			theta_draw[, i] = theta_draw[, i] * data_hh_i$sick_dummy[i]
+
+			if (min(theta_draw[,]) < 0) {
+				print(data_hh_i$sick_dummy[i])
+				stop('why is the draw negative?')
+			}
 
 			random_xi_draws = lapply(halton_mat_list$coverage[,i], function(x) ifelse(x <= p_0[i], 0, ifelse(x <= p_0[i] + p_1[i], 1, (x - p_0[i] - p_1[i])/(1 - p_0[i] - p_1[i])))) %>% unlist()
+			
 			kappa_draw[[1]][,i] = (lapply(1:nrow(theta_draw), function(j) policy_mat_hh_index[[1]][[1]][max(which((theta_draw[j,i] * random_xi_draws[j]) >= policy_mat_hh_index[[1]][[2]][,i])),i]) %>% unlist()) * random_xi_draws + 1 - random_xi_draws
 		}
 
 		R_draw[[1]] =  income_vec[1] - rowSums(theta_draw * kappa_draw[[1]])
-		income_effect = min(R_draw[[1]]) > 0
+		income_effect = max(R_draw[[1]]) > 0
 	}
 
 	if (data_hh_i$HHsize_s[1] > 0) {
@@ -1215,7 +1231,7 @@ uniroot_usr = function(f, interval_init) {
 #' 
 #' 
 counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 1000, n_draw_gauss = 10, sick_parameters, xi_parameters, u_lowerbar = -10, policy_mat_hh, seed_number=1, constraint_function, within_hh_heterogeneity = list(omega=TRUE, gamma=TRUE, delta=TRUE, theta_bar=TRUE), income_vec = NA) {
-	set.seed(hh_index);
+	set.seed(hh_index + seed_number);
 	data_hh_i = data_hh_list[[hh_index]]; 
 	HHsize = nrow(data_hh_i);
 	X_ind = var_ind(data_hh_i)

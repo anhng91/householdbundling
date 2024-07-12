@@ -94,9 +94,9 @@ if (remote) {
   sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
   sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 } else {
-  sample_r_theta = sample(sample_r_theta, 4000, replace=TRUE)
-  sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
-  sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
+  sample_r_theta = sample(sample_r_theta, 200, replace=TRUE)
+  sample_identify_pref = sample(sample_identify_pref, 100, replace=TRUE)
+  sample_identify_theta = sample(sample_identify_theta, 100, replace=TRUE)
 }
 
 for (index in sample_identify_theta) {
@@ -140,6 +140,10 @@ if (Sys.info()[['sysname']] == 'Windows') {
 }
 
 n_draw_halton = 100; 
+
+n_halton_at_r = 100; 
+
+
 if (Sys.info()[['sysname']] == 'Windows') {
   clusterExport(cl, c('active_index', 'param_trial', 'transform_param_trial', 'sample_identify_pref', 'xi_parameters', 'sick_parameters'))
   clusterExport(cl,'n_draw_halton')
@@ -196,9 +200,7 @@ X_hh_theta_r = do.call('rbind',lapply(sample_r_theta, function(output_hh_index) 
 
 n_involuntary = do.call('c', lapply(sample_r_theta, function(output_hh_index) data_hh_list[[output_hh_index]]$N_com[1] + data_hh_list[[output_hh_index]]$N_bef[1] + data_hh_list[[output_hh_index]]$N_std_w_ins[1]))
 
-n_halton_at_r = 100; 
-
-initial_param_trial = init_param
+initial_param_trial = rep(0, length(init_param))
 
 # initial_param_trial[[x_transform[[2]]$beta_delta[1]]] = 1
 # initial_param_trial[[x_transform[[2]]$beta_theta_ind[1]]] = 0.5
@@ -299,6 +301,7 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
 
     output[[2]] = output[[2]][active_index_pref]
     output[[3]] = do.call('cbind', output[[3]])
+    output[[4]] = abs(mean(output_1) - mean(mat_M[,1]))
 
     print(output[[1]])
     return(output)
@@ -438,7 +441,9 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
   optim_r = optim(rep(0,length(x_transform[[2]]$beta_r) + 2), function(x) fx_r(x, silent=TRUE), control=list(maxit=1e4), method='BFGS') 
 
   print('-------fit--------')
-  aggregate_moment_pref(transform_param(param_trial_here, return_index=TRUE),silent=FALSE)
+  if (aggregate_moment_pref(transform_param(param_trial_here, return_index=TRUE),silent=FALSE)[[4]] < 0.02) {
+    initial_param_trial <<- param_trial_here
+  }
   fx_r(optim_r$par, silent=FALSE)
 
   param_trial_here[c(x_transform[[2]]$beta_r, x_transform[[2]]$sigma_r, x_transform[[2]]$correlation)] = optim_r$par
@@ -465,12 +470,11 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
   summary(Em_full_insurance * full_insurance_indicator_ind_level + Em_no_insurance * no_insurance_indicator_ind_level) %>% print
   summary(mat_M_rtheta[,1]) %>% print
 
-  initial_param_trial <<- param_trial_here
-
   if (!(estimate_theta)) {
     optim_pref_theta = list()
     optim_pref_theta$value = 0 
   }
+
   if (return_result) {
     return(param_trial_here)
   } else {
@@ -504,31 +508,37 @@ param_final$sick = sick_parameters
 param = param_final 
 transform_param_final = transform_param(param_final$other)
 
-fit_sample = sample(Vol_HH_list_index, 4000)
+fit_sample = sample(Vol_HH_list_index, 1000)
 
-if (Sys.info()[['sysname']] == 'Windows') {
-  clusterExport(cl, c('transform_param_final', 'param','counterfactual_household_draw_theta_kappa_Rdraw'))
-  fit_values = parLapply(cl, c(fit_sample), function(id) {
-    output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x)
+for (seed_number in c(1:10)) {
+  if (Sys.info()[['sysname']] == 'Windows') {
+    clusterExport(cl, c('transform_param_final', 'param','counterfactual_household_draw_theta_kappa_Rdraw'))
+    mini_fit_values = parLapply(cl, c(fit_sample), function(id) {
+      output = counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, n_halton_at_r, n_draw_gauss, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = seed_number, constraint_function = function(x) x)
+      output = as.data.frame(output)
+      output$Y = data_hh_list[[id]]$Income; 
+      output$m_observed = data_hh_list[[id]]$M_expense; 
+      output$id = id;
+      output$HHsize_s = data_hh_list[[id]]$HHsize_s; 
+      return(output)
+    })
+  } else {
+    mini_fit_values = mclapply(c(fit_sample), function(id) {
+    output = tryCatch(counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, n_halton_at_r, n_draw_gauss, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = seed_number, constraint_function = function(x) x), error=function(e) e)
     output = as.data.frame(output)
     output$Y = data_hh_list[[id]]$Income; 
     output$m_observed = data_hh_list[[id]]$M_expense; 
-    output$id = id;
+    output$id = id; 
     output$HHsize_s = data_hh_list[[id]]$HHsize_s; 
-    return(output)
-  })
-} else {
-  fit_values = mclapply(c(fit_sample), function(id) {
-  output = tryCatch(counterfactual_household_draw_theta_kappa_Rdraw(id, transform_param_final, 100, 10, param$sick, param$xi, u_lowerbar = -1, policy_mat_hh = policy_mat[[id]], seed_number = 1, constraint_function = function(x) x), error=function(e) e)
-  output = as.data.frame(output)
-  output$Y = data_hh_list[[id]]$Income; 
-  output$m_observed = data_hh_list[[id]]$M_expense; 
-  output$id = id; 
-  output$HHsize_s = data_hh_list[[id]]$HHsize_s; 
-  return(output)}, mc.cores=numcores)
+    return(output)}, mc.cores=numcores)
+  }
+  if (seed_number == 1) {
+    fit_values = do.call('rbind', mini_fit_values)
+  } else {
+    fit_values = rbind(fit_values, do.call('rbind', mini_fit_values))
+  }
 }
 
-fit_values = do.call('rbind', fit_values)
 
 observed_data_voluntary = do.call('rbind', data_hh_list[c(fit_sample)])
 
@@ -536,7 +546,6 @@ fit_values = as.data.frame(fit_values)
 
 
 observed_data_voluntary = as.data.frame(observed_data_voluntary)
-
 
 predicted_data_summary = fit_values %>% mutate(Y2 = as.numeric(Hmisc::cut2(Y, g=5))) %>% group_by(Y2) %>% summarise(mean_Vol_sts = mean(vol_sts_counterfactual), mean_m = mean(m, na.rm=TRUE))
 predicted_data_summary$type = 'predicted'
