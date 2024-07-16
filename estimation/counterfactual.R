@@ -79,7 +79,7 @@ if (Sys.info()[['sysname']] == 'Windows') {
   clusterExport(cl,c('Vol_HH_list_index', 'Com_HH_list_index', 'out_sample_index'))
 }
 
-for (job_index in 3:4) {
+for (job_index in 4:4) {
 	if (file.exists(paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))) {
 		param_final <- readRDS(paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
 		param_final$other = init_param

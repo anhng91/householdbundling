@@ -260,7 +260,7 @@ moment_ineligible_hh = function(data_set, param) {
 	X_ind = data_set$X_ind; 
 	X_hh = data_set$X_hh;
 	sick_p = data_set$sick_p;
-	R_draw = data_set$R_draw[[1]] * (data_set$R_draw[[1]] > 0) + 1;
+	R_draw = data_set$R_draw[[1]] * (data_set$R_draw[[1]] > 0);
 	kappa_draw = data_set$kappa_draw[[1]]; 
 
 	
@@ -432,10 +432,19 @@ U = function(input, income_effect=TRUE) {
 	if (!income_effect) {
 		output = input$R_draw
 	} else {
-		output = lapply(((input$R_draw * (input$R_draw > 0) + 1)^(1 - input$omega)-1)/(1 - input$omega), function(x) ifelse(is.nan(x), 0, x)) %>% unlist() * (input$R_draw > 0) - rowSums(matrix(t(apply(input$theta_draw, 1, function(x) x * input$delta)), ncol=input$HHsize) * matrix(t(apply(input$kappa_draw, 1, function(x) unlist(lapply(((x + 1)^(1 - input$gamma) - 1)/(1 - input$gamma),  function(x) ifelse(is.nan(x), 0, x))))), ncol=input$HHsize)) * (input$R_draw > 0) + input$R_draw * (input$R_draw <= 0);
-		output_min = min(output[which(input$R_draw > 0)]);
-		output_min = ifelse(is.infinite(output_min), 0, output_min)
-		output = output + output_min * (input$R_draw <= 0);  
+		# output = lapply(((input$R_draw * (input$R_draw > 0) + 1)^(1 - input$omega)-1)/(1 - input$omega), function(x) ifelse(is.nan(x), 0, x)) %>% unlist() * (input$R_draw > 0) - rowSums(matrix(t(apply(input$theta_draw, 1, function(x) x * input$delta)), ncol=input$HHsize) * matrix(t(apply(input$kappa_draw, 1, function(x) unlist(lapply(((x + 1)^(1 - input$gamma) - 1)/(1 - input$gamma),  function(x) ifelse(is.nan(x), 0, x))))), ncol=input$HHsize)) * (input$R_draw > 0) + input$R_draw * (input$R_draw < 0);
+		# output_min = min(output[which(input$R_draw > 0)]);
+		# output_min = ifelse(is.infinite(output_min), 0, output_min)
+		# output = output - output_min * (input$R_draw > 0);  
+		output = lapply(((input$R_draw)^(1 - input$omega)-1)/(1 - input$omega), function(x) ifelse(is.nan(x), 0, x)) %>% unlist() - rowSums(matrix(t(apply(input$theta_draw, 1, function(x) x * input$delta)), ncol=input$HHsize) * matrix(t(apply(input$kappa_draw, 1, function(x) ((x + 1)^(1 - input$gamma) - 1)/(1 - input$gamma))), ncol = input$HHsize));
+
+		min_output = min(output, na.rm=TRUE); 
+
+		output = output - min_output; 
+
+		output[which(is.nan(output))] = input$R_draw; 
+
+		output = output + max(input$R_draw);
 	}
 	return(output)
 }
@@ -463,8 +472,9 @@ m_fun = function(input, income_effect=TRUE) {
 		output$insurer_cost = input$theta_draw * (1 - input$kappa_draw)	
 	} else {
 		output = list() 
-		output$oop = input$theta_draw * input$kappa_draw + matrix(apply(input$theta_draw * input$kappa_draw, 2, function(x) x * (input$R_draw * (input$R_draw > 0) + 1)^input$omega * (input$R_draw > 0)), ncol=input$HHsize) * matrix(t(apply(1 + input$kappa_draw, 1, function(x) x^(-input$gamma) * input$delta)), ncol=input$HHsize)
-		output$m = input$theta_draw + matrix(apply(input$theta_draw, 2, function(x) x * (input$R_draw * (input$R_draw > 0) + 1)^input$omega * (input$R_draw > 0)), ncol=input$HHsize) * matrix(t(apply(1 + input$kappa_draw, 1, function(x) x^(-input$gamma) * input$delta)), ncol=input$HHsize)
+		transformed_R_draw = lapply(input$R_draw^input$omega, function(x) ifelse(is.nan(x), 0, x)) %>% unlist()
+		output$oop = input$theta_draw * input$kappa_draw + matrix(apply(input$theta_draw * input$kappa_draw, 2, function(x) x * transformed_R_draw), ncol=input$HHsize) * matrix(t(apply(1 + input$kappa_draw, 1, function(x) x^(-input$gamma) * input$delta)), ncol=input$HHsize)
+		output$m = input$theta_draw + matrix(apply(input$theta_draw, 2, function(x) x * transformed_R_draw), ncol=input$HHsize) * matrix(t(apply(1 + input$kappa_draw, 1, function(x) x^(-input$gamma) * input$delta)), ncol=input$HHsize)
 		output$neccessary = input$theta_draw
 		output$optional = output$m - output$neccessary
 		output$insurer_cost = output$m - output$oop
@@ -563,7 +573,8 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 				return(x)
 			}) %>% unlist()
 
-			theta_draw[, i] = theta_draw[, i] * data_hh_i$sick_dummy[i]
+			theta_draw[, i] = theta_draw[, i] * halton_mat_list$sick[,i]
+			# theta_draw[, i] = theta_draw[, i] * data_hh_i$sick_dummy[i]
 
 			if (min(theta_draw[,]) < 0) {
 				print(data_hh_i$sick_dummy[i])

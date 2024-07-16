@@ -200,9 +200,12 @@ X_hh_theta_r = do.call('rbind',lapply(sample_r_theta, function(output_hh_index) 
 
 n_involuntary = do.call('c', lapply(sample_r_theta, function(output_hh_index) data_hh_list[[output_hh_index]]$N_com[1] + data_hh_list[[output_hh_index]]$N_bef[1] + data_hh_list[[output_hh_index]]$N_std_w_ins[1]))
 
+# initial_param_trial = init_param
 initial_param_trial = rep(0, length(init_param))
-
-# initial_param_trial[[x_transform[[2]]$beta_delta[1]]] = 1
+initial_param_trial[[x_transform[[2]]$beta_delta[1]]] = 0.1
+initial_param_trial[[x_transform[[2]]$beta_theta_ind[1]]] = 0.1
+initial_param_trial[[x_transform[[2]]$beta_theta[1]]] = 0
+initial_param_trial[[x_transform[[2]]$beta_omega[1]]] = 0.1
 # initial_param_trial[[x_transform[[2]]$beta_theta_ind[1]]] = 0.5
 # initial_param_trial[[x_transform[[2]]$beta_omega[1]]] = 0.5
 # initial_param_trial[[x_transform[[2]]$sigma_thetabar[1]]] = 1
@@ -359,7 +362,7 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
       # }
       pref_moment = aggregate_moment_pref(transform_param(param_trial_inner_theta, return_index=TRUE))
       deriv_theta_index = c(x_transform[[2]]$beta_theta[1], x_transform[[2]]$beta_theta_ind[1], x_transform[[2]]$sigma_thetabar)
-      if (is.na(pref_moment[[1]])) {
+      if (is.na(pref_moment[[1]]) | any(is.nan(pref_moment[[2]]))) {
         return(list(NA, rep(NA, length(x_pref_theta))))
       }
       for (i in deriv_theta_index) {
@@ -412,20 +415,23 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
       return(NA)
     }
     
-    sd_r = exp(x_r[length(x_r)-1])
+    sd_r = exp(x_r[length(x_r)-1]);
     correlation = x_r[length(x_r)]
     mean_vec = rep(X_hh_theta_r %*% x_r[1:(length(x_r)-2)], each = n_halton_at_r) + correlation * hh_theta
-    full_insurance_prob = (pnorm((5 - mean_vec)/sd_r) - pnorm((root_r - mean_vec)/sd_r))/(pnorm((5 - mean_vec)/sd_r) - pnorm((0 - mean_vec)/sd_r))
-    full_insurance_prob[which(is.nan(full_insurance_prob))] = 1;
-    full_insurance_prob = colMeans(matrix(full_insurance_prob, nrow = n_halton_at_r))
-    relevant_index = full_insurance_indicator + no_insurance_indicator == 1
-    output = 
-      sum(((full_insurance_indicator - full_insurance_prob)^2 * relevant_index))
-    print(output)
+
+    denominator = (pnorm((5 - mean_vec)/sd_r) - pnorm((0 - mean_vec)/sd_r))
+
+    full_insurance_prob = (pnorm((5 - mean_vec)/sd_r) - pnorm((root_r - mean_vec)/sd_r))/(denominator + 1e-20)
+
+    no_insurance_prob = (pnorm((root_r - mean_vec)/sd_r) - pnorm((0 - mean_vec)/sd_r))/(denominator + 1e-20)
+
+    output = -sum(full_insurance_prob[full_insurance_indicator]^2) - sum(no_insurance_prob[no_insurance_indicator]^2)
+    relevant_index = which(full_insurance_indicator + no_insurance_indicator == 1)
     if (!(silent)) {
       print(summary(full_insurance_prob[relevant_index]))
       print(summary(full_insurance_indicator[relevant_index]))
     }
+
     if (is.nan(output) | is.infinite(output)) {
       return(NA)
     }
@@ -434,14 +440,14 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
     }
   }
 
-  init_val = fx_r(rep(0,length(x_transform[[2]]$beta_r) + 2)); 
+  init_val = fx_r(rep(1,length(x_transform[[2]]$beta_r) + 2)); 
   if (is.nan(init_val) | is.na(init_val)) {
     return(NA)
   }
   optim_r = optim(rep(0,length(x_transform[[2]]$beta_r) + 2), function(x) fx_r(x, silent=TRUE), control=list(maxit=1e4), method='BFGS') 
 
   print('-------fit--------')
-  if (aggregate_moment_pref(transform_param(param_trial_here, return_index=TRUE),silent=FALSE)[[4]] < 0.02) {
+  if (aggregate_moment_pref(transform_param(param_trial_here, return_index=TRUE),silent=FALSE)[[4]] < 0.001) {
     initial_param_trial <<- param_trial_here
   }
   fx_r(optim_r$par, silent=FALSE)

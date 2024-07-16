@@ -41,4 +41,3 @@ importFrom(stats,pnorm)
 importFrom(stats,qnorm)
 importFrom(tidyr,replace_na)
 importFrom(utils,combn)
-

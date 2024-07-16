@@ -64,7 +64,7 @@ if (Sys.info()[['sysname']] == 'Windows') {
   clusterExport(cl,c('Vol_HH_list_index', 'Com_HH_list_index', 'out_sample_index'))
 }
 
-for (job_index in 0:4) {
+for (job_index in 4:4) {
 	print(paste0('computing at index = ', job_index))
 	if (file.exists(paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))) {
 		param_final <- readRDS(paste0('../../householdbundling_estimate/estimate_',job_index,'.rds'))
