@@ -5,7 +5,7 @@ if (length(args)<2) {
   } else {
     numcores = 8;
   }
-  job_index = 4;  
+  job_index = 1232;  
 } else {
   job_index = as.numeric(args[1]);
   numcores = as.numeric(args[2]); 
@@ -94,9 +94,9 @@ if (remote) {
   sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
   sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 } else {
-  sample_r_theta = sample(sample_r_theta, 200, replace=TRUE)
-  sample_identify_pref = sample(sample_identify_pref, 100, replace=TRUE)
-  sample_identify_theta = sample(sample_identify_theta, 100, replace=TRUE)
+  sample_r_theta = sample(sample_r_theta, 4000, replace=TRUE)
+  sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
+  sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 }
 
 for (index in sample_identify_theta) {

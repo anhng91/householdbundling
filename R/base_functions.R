@@ -13,6 +13,7 @@
 mean_E_XW = function(mu, sigma, X) {
 	output = exp(1/2 * (sigma^2 * (log(X))^2 + 2 * mu * log(X))) * (1 - pnorm((-mu - sigma^2 * log(X))/sigma))/(1 - pnorm(-mu/sigma));
 	output[which(X == 0)] = 0 
+	output[which(is.nan(output))] = 0;
 	return(output)
 }
 
@@ -40,6 +41,10 @@ d_mean_E_XW = function(mu, sigma, X) {
 	d_output$mu[which(X == 0)] = 0; 
 	d_output$sigma[which(X == 0)] = 0; 
 	d_output$X[which(X == 0)] = 0; 
+
+	d_output$mu[which(is.nan(d_output$mu))] = 0;
+	d_output$sigma[which(is.nan(d_output$sigma))] = 0;
+	d_output$X[which(is.nan(d_output$X))] = 0;
 
 	return(d_output)
 }
@@ -89,9 +94,9 @@ d_truncated_normal_mean = function(mu, sigma) {
  
  
 	if (is.infinite(output) | is.nan(output)) {
-		return(list(NA, NA))
+		return(list(mu = NA, sigma = NA))
 	} else if (output < 0) {
-		return(list(0,0))
+		return(list(mu = 0, sigma = 0))
 	} else {
 		return(d_output)
 	}
@@ -143,9 +148,9 @@ d_truncated_normal_variance = function(mu, sigma) {
 
 
 	if (is.infinite(output) | is.nan(output)) {
-		return(list(NA, NA))
+		return(list(mu = NA, sigma = NA))
 	} else if (output < 0) {
-		return(list(0,0))
+		return(list(mu = 0, sigma = 0))
 	} else {
 		return(d_output)
 	}
@@ -303,8 +308,8 @@ moment_ineligible_hh = function(data_set, param) {
 		obj4 =  mean_E_XW(mean_beta_omega, exp(param$sigma_omega), R_draw);
 
 		obj5 = d_truncated_normal_mean(mean_beta_delta[mem_index], exp(param$sigma_delta)); 
-		obj6 = d_mean_E_XW(mean_beta_omega, exp(param$sigma_omega), R_draw);
-		obj7 = d_mean_E_XW(mean_beta_gamma[mem_index], exp(param$sigma_gamma), 1/(1 + kappa_draw[,mem_index]))
+		obj6 = d_mean_E_XW(mean_beta_omega, exp(param$sigma_omega), R_draw); 
+		obj7 = d_mean_E_XW(mean_beta_gamma[mem_index], exp(param$sigma_gamma), 1/(1 + kappa_draw[,mem_index])); 
 
 		obj8 = truncated_normal_variance(mean_beta_delta[mem_index], exp(param$sigma_delta))
 		obj9 = mean_E_XW(mean_beta_omega, exp(param$sigma_omega), R_draw^2)
