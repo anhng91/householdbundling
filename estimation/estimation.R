@@ -94,9 +94,9 @@ if (remote) {
   sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
   sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 } else {
-  sample_r_theta = sample(sample_r_theta, 4000, replace=TRUE)
-  sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
-  sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
+  sample_r_theta = sample(sample_r_theta, 400, replace=TRUE)
+  sample_identify_pref = sample(sample_identify_pref, 400, replace=TRUE)
+  sample_identify_theta = sample(sample_identify_theta, 400, replace=TRUE)
 }
 
 for (index in sample_identify_theta) {
@@ -411,9 +411,9 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
   root_r = do.call('c',lapply(moment_eligible_hh_output, function(output_hh) output_hh$root_r))
   hh_theta = do.call('c',lapply(moment_eligible_hh_output, function(output_hh) output_hh$hh_theta))
   fx_r = function(x_r, derivative=FALSE, silent=TRUE) {
-    if (max(abs(x_r)) > 3) {
-      return(NA)
-    }
+    # if (max(abs(x_r)) > 3) {
+    #   return(NA)
+    # }
     
     sd_r = exp(x_r[length(x_r)-1]);
     correlation = x_r[length(x_r)]
@@ -430,6 +430,8 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
     if (!(silent)) {
       print(summary(full_insurance_prob[relevant_index]))
       print(summary(full_insurance_indicator[relevant_index]))
+      print(summary(no_insurance_prob[relevant_index]))
+      print(summary(no_insurance_indicator[relevant_index]))
     }
 
     if (is.nan(output) | is.infinite(output)) {
@@ -514,9 +516,9 @@ param_final$sick = sick_parameters
 param = param_final 
 transform_param_final = transform_param(param_final$other)
 
-fit_sample = sample(Vol_HH_list_index, 1000)
+fit_sample = sample(Vol_HH_list_index, 500)
 
-for (seed_number in c(1:10)) {
+for (seed_number in c(1:2)) {
   if (Sys.info()[['sysname']] == 'Windows') {
     clusterExport(cl, c('transform_param_final', 'param','counterfactual_household_draw_theta_kappa_Rdraw'))
     mini_fit_values = parLapply(cl, c(fit_sample), function(id) {
@@ -549,7 +551,6 @@ for (seed_number in c(1:10)) {
 observed_data_voluntary = do.call('rbind', data_hh_list[c(fit_sample)])
 
 fit_values = as.data.frame(fit_values)
-
 
 observed_data_voluntary = as.data.frame(observed_data_voluntary)
 

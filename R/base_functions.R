@@ -265,7 +265,7 @@ moment_ineligible_hh = function(data_set, param) {
 	X_ind = data_set$X_ind; 
 	X_hh = data_set$X_hh;
 	sick_p = data_set$sick_p;
-	R_draw = data_set$R_draw[[1]] * (data_set$R_draw[[1]] > 0);
+	R_draw = data_set$R_draw[[1]] * (data_set$R_draw[[1]] > 0) + 1;
 	kappa_draw = data_set$kappa_draw[[1]]; 
 
 	
@@ -425,6 +425,8 @@ all_insurance = function(vec_) {
 #' Compute direct utility function
 #'
 #' @param input is a list of all input components.
+#' @param income_effect is whether income effect is allowed, default to TRUE 
+#' @param diagnosis logical value, default to FALSE
 #' 
 #' @return a vector of utility realization
 #' 
@@ -433,23 +435,43 @@ all_insurance = function(vec_) {
 #' @examples
 #' U(list(R_draw = runif(10), theta_draw = cbind(runif(10)/10, runif(10)/10), delta = c(0.5, 0.5), omega=0.1, gamma = c(0.5, 0.5), kappa_draw = matrix(1, nrow=10, ncol=2), HHsize = 2))
 #' 
-U = function(input, income_effect=TRUE) {
+U = function(input, income_effect=TRUE, diagnosis = FALSE) {
 	if (!income_effect) {
 		output = input$R_draw
 	} else {
-		# output = lapply(((input$R_draw * (input$R_draw > 0) + 1)^(1 - input$omega)-1)/(1 - input$omega), function(x) ifelse(is.nan(x), 0, x)) %>% unlist() * (input$R_draw > 0) - rowSums(matrix(t(apply(input$theta_draw, 1, function(x) x * input$delta)), ncol=input$HHsize) * matrix(t(apply(input$kappa_draw, 1, function(x) unlist(lapply(((x + 1)^(1 - input$gamma) - 1)/(1 - input$gamma),  function(x) ifelse(is.nan(x), 0, x))))), ncol=input$HHsize)) * (input$R_draw > 0) + input$R_draw * (input$R_draw < 0);
-		# output_min = min(output[which(input$R_draw > 0)]);
-		# output_min = ifelse(is.infinite(output_min), 0, output_min)
-		# output = output - output_min * (input$R_draw > 0);  
-		output = lapply(((input$R_draw)^(1 - input$omega)-1)/(1 - input$omega), function(x) ifelse(is.nan(x), 0, x)) %>% unlist() - rowSums(matrix(t(apply(input$theta_draw, 1, function(x) x * input$delta)), ncol=input$HHsize) * matrix(t(apply(input$kappa_draw, 1, function(x) ((x + 1)^(1 - input$gamma) - 1)/(1 - input$gamma))), ncol = input$HHsize));
+		output = lapply(((input$R_draw * (input$R_draw > 0) + 1)^(1 - input$omega)-1)/(1 - input$omega), function(x) ifelse(is.nan(x), 0, x)) %>% unlist() - rowSums(matrix(t(apply(input$theta_draw, 1, function(x) x * input$delta)), ncol=input$HHsize) * matrix(t(apply(input$kappa_draw, 1, function(x) ((x + 1)^(1 - input$gamma) - 1)/(1 - input$gamma))), ncol = input$HHsize)) * (input$R_draw > 0);
+		output_orig = output;
 
-		min_output = min(output, na.rm=TRUE); 
+		min_output = min(output[which(input$R_draw > 0)], na.rm=TRUE); 
 
-		output = output - min_output; 
+		max_output = max(output[which(input$R_draw > 0)], na.rm=TRUE);
 
-		output[which(is.nan(output))] = input$R_draw; 
+		min_output = ifelse(is.infinite(min_output), 0, min_output); 
 
-		output = output + max(input$R_draw);
+		if (length(which(input$R_draw < 0)) > 0){
+			output = output - min_output; 
+		}
+
+		if (length(which(input$R_draw > 0)) > 0) {
+			output[which(input$R_draw < 0)] = input$R_draw[which(input$R_draw < 0)];
+		} else {
+			output = input$R_draw 
+		}
+
+		if (length(which(input$R_draw <= 0)) > 0) {
+			output = output + min_output; 
+		}
+
+		if (diagnosis) {
+			print('before transform')
+			print(summary(output_orig))
+
+			print('after transform')
+			print(summary(output))
+
+			print('original value of R_theta')
+			print(summary(input$R_draw))
+		}
 	}
 	return(output)
 }
@@ -477,7 +499,7 @@ m_fun = function(input, income_effect=TRUE) {
 		output$insurer_cost = input$theta_draw * (1 - input$kappa_draw)	
 	} else {
 		output = list() 
-		transformed_R_draw = lapply(input$R_draw^input$omega, function(x) ifelse(is.nan(x), 0, x)) %>% unlist()
+		transformed_R_draw = lapply((input$R_draw * (input$R_draw > 0) + 1)^input$omega, function(x) ifelse(is.nan(x), 0, x)) %>% unlist() * (input$R_draw > 0)
 		output$oop = input$theta_draw * input$kappa_draw + matrix(apply(input$theta_draw * input$kappa_draw, 2, function(x) x * transformed_R_draw), ncol=input$HHsize) * matrix(t(apply(1 + input$kappa_draw, 1, function(x) x^(-input$gamma) * input$delta)), ncol=input$HHsize)
 		output$m = input$theta_draw + matrix(apply(input$theta_draw, 2, function(x) x * transformed_R_draw), ncol=input$HHsize) * matrix(t(apply(1 + input$kappa_draw, 1, function(x) x^(-input$gamma) * input$delta)), ncol=input$HHsize)
 		output$neccessary = input$theta_draw
@@ -729,9 +751,7 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 					for (i in elig_member_index) {
 							kappa_draw[[i + 1]] = kappa_draw[[1]]; 
 							kappa_draw[[i + 1]][,i] = 1;  
-
 							R_draw[[i+1]] =  income_vec[length(elig_member_index)] - rowSums(theta_draw * kappa_draw[[i+1]])	
-
 							U_deviate[[i]] = U(list(R_draw = R_draw[[i + 1]], omega = omega[j], theta_draw = theta_draw, delta = delta[j,], gamma = gamma[j,] , HHsize = HHsize, kappa_draw = kappa_draw[[i + 1]]),income_effect)
 					}
 					threshold_r_output = lapply(U_deviate[elig_member_index], function(U_deviate_i) find_threshold_r(U_full_insurance, U_deviate_i))
@@ -741,11 +761,18 @@ household_draw_theta_kappa_Rdraw = function(hh_index, param, n_draw_halton = 100
 						kappa_draw[[i + 1]][,-i] = 1;  
 
 						R_draw[[i+1]] =  income_vec[2] - rowSums(theta_draw * kappa_draw[[i+1]])	
-
 						U_deviate[[i]] = U(list(R_draw = R_draw[[i + 1]], omega = omega[j], theta_draw = theta_draw, delta = delta[j,], gamma = gamma[j,] , HHsize = HHsize, kappa_draw = kappa_draw[[i + 1]]),income_effect)
 
 					}
 					threshold_r_output = lapply(U_deviate[elig_member_index], function(U_deviate_i) find_threshold_r(U_deviate_i, U_uninsured))
+					unlist_threshold_r = lapply(threshold_r_output, function(x) x$prob_full_insured) %>% unlist
+					# print('unlist_threshold_r');
+					# print(unlist_threshold_r)
+					# if (max(unlist_threshold_r, na.rm=TRUE) == 1) {
+					# 	i = which(unlist_threshold_r == 1); 
+					# 	print(U(list(R_draw = R_draw[[i + 1]], omega = omega[j], theta_draw = theta_draw, delta = delta[j,], gamma = gamma[j,] , HHsize = HHsize, kappa_draw = kappa_draw[[i + 1]]),income_effect, diagnosis=TRUE) %>% summary)
+					# 	print(U(list(R_draw = income_vec[1] - rowSums(theta_draw), omega = omega[j], theta_draw = theta_draw, kappa_draw = kappa_draw[[1]] * 0 + 1, gamma = gamma[j,], delta = delta[j,], HHsize = HHsize), income_effect, diagnosis=TRUE) %>% summary)
+					# }
 				}
 
 				if (data_hh_i$N_vol[1] == data_hh_i$HHsize_s[1]) {
@@ -1198,7 +1225,12 @@ uniroot_usr = function(f, interval_init) {
 			return(output) 
 		} else {
 			if (f(interval_init[2]) > 0) {
-				return(uniroot(f, interval_init))
+				output = uniroot(f, interval_init);
+				if (output$f.root > 1e-2) {
+					message(paste0('root is not achieved despite appropriate value range. Stopping value is equal to ', output$f.root))
+					print(output)
+				}
+				return(output)
 			} else {
 				while (f(interval_init[2]) < 0 & interval_init[2] < 10) {
 					interval_init[2] = interval_init[2] + 0.2
@@ -1209,13 +1241,19 @@ uniroot_usr = function(f, interval_init) {
 					} else {
 						output = list()
 						output$root = NA; 
-						return(output) 
 					}
 					
 				} else {
 					output = uniroot(f, interval_init); 
-					return(output)
 				}
+				if (!(is.na(output$root))) {
+					if (output$f.root > 1e-2) {
+						message(paste0('root is not achieved despite appropriate value range. Stopping value is equal to ', output$f.root))
+						print(output)
+					}
+				}
+				
+				return(output)
 			}
 		}
 	}
@@ -1483,7 +1521,7 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 
 		if (optimal_U_index > 1) {
 			temp_f = function(x) f_wtp(list(un_censored_R = un_censored_R[[1]], kappa_draw = kappa_draw[[1]]), list(un_censored_R = un_censored_R[[optimal_U_index]] + (income_vec[1] - income_vec[optimal_U_index]), kappa_draw = kappa_draw[[optimal_U_index]]),x, income_effect)
-			wtp = uniroot_usr(temp_f, c(0,0.1))$root  
+			wtp = uniroot_usr(temp_f, c(0, mean(un_censored_R[[optimal_U_index]] - un_censored_R[[1]]) + 0.1))$root  
 		} else {
 			wtp = 0
 		}
@@ -1492,7 +1530,8 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 
 		for (i in elig_member_index) {
 			temp_f = function(x) f_wtp(list(un_censored_R = un_censored_R[[1]], kappa_draw = kappa_draw[[1]]), list(un_censored_R = un_censored_R_uni[[i]] + (income_vec[1] - income_vec[2]), kappa_draw = kappa_draw_uni[[i]]),x, income_effect)
-			wtp_uni[i] =  uniroot_usr(temp_f, c(0,0.1))$root  
+			wtp_uni[i] =  uniroot_usr(temp_f, c(0,0.05))$root ; 
+			wtp_uni[i] = ifelse(abs(temp_f(wtp_uni[i])) < 1e-4, wtp_uni[i], NA)
 			temp_f = function(x) f_wtp(list(un_censored_R = un_censored_R[[1]], kappa_draw = kappa_draw[[1]]), list(un_censored_R = un_censored_R_uni[[i]] + (income_vec[1] - income_vec[2]), kappa_draw = kappa_draw_uni[[i]]),x,income_effect = FALSE)
 			if (is.na(wtp_uni[i])) {
 				wtp_uni[i] = uniroot_usr(temp_f, c(0,0.1))$root
