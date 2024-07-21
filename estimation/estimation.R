@@ -1,7 +1,7 @@
 args = commandArgs(trailingOnly=TRUE)
 if (length(args)<2) { 
   if (Sys.info()[['sysname']] == 'Windows') {
-    numcores = 24;
+    numcores = 10;
   } else {
     numcores = 8;
   }
@@ -162,7 +162,7 @@ if (Sys.info()[['sysname']] == 'Windows') {
 }
 
 mat_M = do.call('rbind', lapply(data_hh_list_pref, function(x) {
-      return(cbind(x$data$M_expense, x$data$M_expense^2))
+      return(cbind(x$data$M_expense, x$data$M_expense^2,x$data$sick_dummy))
     }))
 mat_Year = do.call('rbind', lapply(data_hh_list_pref, function(x) {
         return(cbind(x$data$Year == 2004, x$data$Year == 2006, x$data$Year == 2010, x$data$Year == 2012))
@@ -274,18 +274,18 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
     output[[3]] = list();
     if (!silent) {
       print('fit of ineligible HHs')
-      print(summary(output_1))
-      print(summary(mat_M[,1]))
+      print(summary(output_1[which(mat_M[,3] == 1)]))
+      print(summary(mat_M[which(mat_M[,3] == 1),1]))
     }
     for (moment_index in c(1:nrow(mat_YK))) {
-      output[[3]][[moment_index]] = ((output_1 - mat_M[,1]) * mat_YK[moment_index,])^2
+      output[[3]][[moment_index]] = ((output_1 - mat_M[,1]) * mat_YK[moment_index,])^2 * mat_M[,3]
       moment[moment_index] = mean(output[[3]][[moment_index]]); 
-      d_moment[[moment_index]] = 2*((output_1 - mat_M[,1]) * mat_YK[moment_index,]);
+      d_moment[[moment_index]] = 2*((output_1 - mat_M[,1]) * mat_YK[moment_index,] * mat_M[,3]);
     }
     for (moment_index in c(1:nrow(mat_YK))) {
-      output[[3]][[moment_index + nrow(mat_YK)]] = ((output_2 - mat_M[,2]) * mat_YK[moment_index,])^2
+      output[[3]][[moment_index + nrow(mat_YK)]] = ((output_2 - mat_M[,2]) * mat_YK[moment_index,])^2 * mat_M[,3]
       moment[moment_index + nrow(mat_YK)] = mean(output[[3]][[moment_index + nrow(mat_YK)]]); 
-      d_moment[[moment_index + nrow(mat_YK)]] = 2*((output_2 - mat_M[,2]) * mat_YK[moment_index,]);
+      d_moment[[moment_index + nrow(mat_YK)]] = 2*((output_2 - mat_M[,2]) * mat_YK[moment_index,] * mat_M[,3]);
     }
 
     d_moment = do.call('cbind', d_moment)
