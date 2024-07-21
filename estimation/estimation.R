@@ -3,7 +3,7 @@ if (length(args)<2) {
   if (Sys.info()[['sysname']] == 'Windows') {
     numcores = 10;
   } else {
-    numcores = 8;
+    numcores = 2;
   }
   job_index = 1232;  
 } else {
@@ -29,7 +29,7 @@ library(randtoolbox)
 library(fastDummies)
 
 # setwd('./familyenrollment')
-devtools::install(upgrade='never')
+# devtools::install(upgrade='never')
 library(familyenrollment)
 
 message('constructing the list of Compulsory households')
@@ -94,9 +94,9 @@ if (remote) {
   sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
   sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 } else {
-  sample_r_theta = sample(sample_r_theta, 400, replace=TRUE)
-  sample_identify_pref = sample(sample_identify_pref, 100, replace=TRUE)
-  sample_identify_theta = sample(sample_identify_theta, 100, replace=TRUE)
+  sample_r_theta = sample(sample_r_theta, 4000, replace=TRUE)
+  sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
+  sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 }
 
 for (index in sample_identify_theta) {
@@ -207,8 +207,8 @@ n_involuntary = do.call('c', lapply(sample_r_theta, function(output_hh_index) da
 # initial_param_trial = init_param
 initial_param_trial = rep(0, length(init_param))
 initial_param_trial[[x_transform[[2]]$beta_delta[1]]] = 0.1
-initial_param_trial[[x_transform[[2]]$beta_theta_ind[1]]] = 0.1
-initial_param_trial[[x_transform[[2]]$beta_theta[1]]] = -2
+initial_param_trial[[x_transform[[2]]$beta_theta_ind[1]]] = 1
+initial_param_trial[[x_transform[[2]]$beta_theta[1]]] = -3
 initial_param_trial[[x_transform[[2]]$beta_omega[1]]] = 1
 # initial_param_trial[[x_transform[[2]]$beta_theta_ind[1]]] = 0.5
 # initial_param_trial[[x_transform[[2]]$beta_omega[1]]] = 0.5
@@ -406,6 +406,7 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
 
   root_r = do.call('c',lapply(moment_eligible_hh_output, function(output_hh) output_hh$root_r))
   hh_theta = do.call('c',lapply(moment_eligible_hh_output, function(output_hh) output_hh$hh_theta))
+  relevant_index = which(full_insurance_indicator + no_insurance_indicator == 1)
   fx_r = function(x_r, derivative=FALSE, silent=TRUE) {
     # if (max(abs(x_r)) > 3) {
     #   return(NA)
@@ -422,7 +423,7 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
     no_insurance_prob = (pnorm((root_r - mean_vec)/sd_r) - pnorm((0 - mean_vec)/sd_r))/(denominator + 1e-20)
 
     output = -sum(full_insurance_prob[full_insurance_indicator]^2) - sum(no_insurance_prob[no_insurance_indicator]^2)
-    relevant_index = which(full_insurance_indicator + no_insurance_indicator == 1)
+    
     if (!(silent)) {
       print(summary(full_insurance_prob[relevant_index]))
       print(summary(full_insurance_indicator[relevant_index]))
@@ -487,10 +488,13 @@ compute_inner_loop = function(x_stheta, return_result=FALSE, estimate_theta=TRUE
     print(paste0('output_2 = ', output_2));
     print(paste0('optim_r$value = ', optim_r$value));
     print(paste0('optim_pref_theta$value = ', optim_pref_theta$value))
-    return(output_2 + optim_r$value + optim_pref_theta$value) 
+    initial_param_trial <<- param_trial_here; 
+    return(output_2 + optim_r$value/length(relevant_index) + optim_pref_theta$value) 
   }
   
 }
+
+stop()
 
 estimate_r_thetabar = optimize(function(xs) {
   output = try(compute_inner_loop(xs))
