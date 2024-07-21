@@ -94,7 +94,7 @@ if (remote) {
   sample_identify_pref = sample(sample_identify_pref, length(sample_identify_pref), replace=TRUE)
   sample_identify_theta = sample(sample_identify_theta, length(sample_identify_theta), replace=TRUE)
 } else {
-  sample_r_theta = sample(sample_r_theta, 100, replace=TRUE)
+  sample_r_theta = sample(sample_r_theta, 400, replace=TRUE)
   sample_identify_pref = sample(sample_identify_pref, 100, replace=TRUE)
   sample_identify_theta = sample(sample_identify_theta, 100, replace=TRUE)
 }
@@ -139,9 +139,9 @@ if (Sys.info()[['sysname']] == 'Windows') {
   clusterExport(cl, c('active_index', 'param_trial', 'data_hh_list_theta'))
 }
 
-n_draw_halton = 20; 
+n_draw_halton = 100; 
 
-n_halton_at_r = 20; 
+n_halton_at_r = 100; 
 
 
 if (Sys.info()[['sysname']] == 'Windows') {
@@ -161,9 +161,13 @@ if (Sys.info()[['sysname']] == 'Windows') {
   data_hh_list_pref = mclapply(sample_identify_pref, function(index) tryCatch(household_draw_theta_kappa_Rdraw(hh_index=index, param=transform_param_trial[[1]], n_draw_halton = n_draw_halton, n_draw_gauss = 10, sick_parameters, xi_parameters, short=FALSE), error=function(e) e), mc.cores=numcores)
 }
 
+
 mat_M = do.call('rbind', lapply(data_hh_list_pref, function(x) {
-      return(cbind(x$data$M_expense, x$data$M_expense^2,x$data$sick_dummy))
+      return(cbind(x$data$M_expense, x$data$M_expense^2))
     }))
+
+mat_M = cbind(mat_M, mat_M[,1] > quantile(mat_M[,1], 0.025) & mat_M[,1] < quantile(mat_M[,1], 0.975))
+
 mat_Year = do.call('rbind', lapply(data_hh_list_pref, function(x) {
         return(cbind(x$data$Year == 2004, x$data$Year == 2006, x$data$Year == 2010, x$data$Year == 2012))
       }))
