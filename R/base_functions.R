@@ -1499,6 +1499,7 @@ counterfactual_household_draw_theta_kappa_Rdraw = function(hh_index, param, n_dr
 			}
 		}
 
+
 		optimal_U_index = sort(constraint_function(unlist(U_list)), index.return=TRUE, decreasing=TRUE)$ix[1]
 
 		optimal_U_index = max(which(unlist(U_list) == U_list[optimal_U_index]))
